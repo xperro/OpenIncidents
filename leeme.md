@@ -52,16 +52,16 @@ monitor-agent/
 ├─ LEEME.md
 ├─ pyproject.toml
 ├─ config/
-│  └─ settings.yaml
+│ └─ settings.yaml
 ├─ src/
-│  └─ monitor_agent/
-│     ├─ main.py
-│     ├─ cli/
-│     ├─ core/
-│     ├─ providers/
-│     ├─ services/
-│     ├─ domain/
-│     └─ utils/
+│ └─ monitor_agent/
+│ ├─ main.py
+│ ├─ cli/
+│ ├─ core/
+│ ├─ providers/
+│ ├─ services/
+│ ├─ domain/
+│ └─ utils/
 └─ tests/
 
 ---
