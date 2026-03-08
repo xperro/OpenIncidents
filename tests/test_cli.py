@@ -1,6 +1,8 @@
 import io
 import json
 import os
+import shutil
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -9,7 +11,7 @@ from triage.cli import main
 from triage.errors import UserError
 from triage.infra import package_handler
 from triage.project import default_project_config, save_project_config
-from triage.state import new_state, save_state
+from triage.state import new_state, save_state, state_path
 from triage.validation import ValidationResult
 
 
@@ -19,7 +21,15 @@ class CliTests(unittest.TestCase):
         self.work_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.home_dir.cleanup)
         self.addCleanup(self.work_dir.cleanup)
-        patcher = mock.patch.dict(os.environ, {"HOME": self.home_dir.name}, clear=False)
+        patcher = mock.patch.dict(
+            os.environ,
+            {
+                "HOME": self.home_dir.name,
+                "APPDATA": self.home_dir.name,
+                "USERPROFILE": self.home_dir.name,
+            },
+            clear=False,
+        )
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -58,9 +68,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0, msg=stderr)
         self.assertIn("Local state:", stdout)
         self.assertTrue(os.path.exists(os.path.join(self.work_dir.name, "triage.yaml")))
-        self.assertTrue(
-            os.path.exists(os.path.join(self.home_dir.name, ".triage", "config.json"))
-        )
+        self.assertTrue(os.path.exists(state_path()))
 
     def test_template_download_writes_expected_files(self):
         self.complete_bootstrap()
@@ -264,6 +272,17 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["stdout_json"]["runtime"], "python")
 
     def test_run_executes_go_template_locally(self):
+        if shutil.which("go") is None:
+            self.skipTest("go toolchain is not installed")
+        go_version = subprocess.run(
+            ["go", "version"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if "go1.26.1" not in go_version.stdout:
+            self.skipTest("go1.26.1 toolchain is not installed locally")
+
         self.complete_bootstrap()
         project = default_project_config()
         project["integrations"]["slack"]["enabled"] = False

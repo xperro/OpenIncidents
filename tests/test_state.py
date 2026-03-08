@@ -17,7 +17,15 @@ class StateTests(unittest.TestCase):
     def setUp(self):
         self.temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp_dir.cleanup)
-        patcher = mock.patch.dict(os.environ, {"HOME": self.temp_dir.name}, clear=False)
+        patcher = mock.patch.dict(
+            os.environ,
+            {
+                "HOME": self.temp_dir.name,
+                "APPDATA": self.temp_dir.name,
+                "USERPROFILE": self.temp_dir.name,
+            },
+            clear=False,
+        )
         patcher.start()
         self.addCleanup(patcher.stop)
 

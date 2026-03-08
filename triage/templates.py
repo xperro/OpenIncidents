@@ -65,6 +65,12 @@ def template_variant_source(cloud: str, runtime: str) -> tuple[str, Any]:
     return root_display, root.joinpath(runtime).joinpath(cloud)
 
 
+def template_display_path(root_display: str, runtime: str, cloud: str) -> str:
+    if root_display.startswith("embedded:"):
+        return f"{root_display}/{runtime}/{cloud}"
+    return os.path.join(root_display, runtime, cloud)
+
+
 def validate_handler_path(runtime: str, cloud: str, handler_path: str) -> dict[str, Any]:
     if not os.path.isabs(handler_path):
         raise UserError("`--handler-path` must be absolute.")
@@ -101,8 +107,9 @@ def download_template(cloud: str, runtime: str, output_path: str, force: bool) -
         raise UserError("`--output` must point to a directory path.")
 
     source_root_display, source_dir = template_variant_source(cloud, runtime)
+    source_display_path = template_display_path(source_root_display, runtime, cloud)
     if not source_dir.is_dir():
-        raise UserError(f"Template variant not found: {source_root_display}/{runtime}/{cloud}")
+        raise UserError(f"Template variant not found: {source_display_path}")
 
     if os.path.isdir(output_path):
         existing = os.listdir(output_path)
@@ -120,7 +127,7 @@ def download_template(cloud: str, runtime: str, output_path: str, force: bool) -
         "cloud": cloud,
         "runtime": runtime,
         "output_path": output_path,
-        "source_path": f"{source_root_display}/{runtime}/{cloud}",
+        "source_path": source_display_path,
         "written_files": written,
     }
 
