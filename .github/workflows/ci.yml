@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        python-version:
+          - "3.13.12"
+          - "3.14.3"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Smoke test CLI help
+        run: python -m triage --help
+
+  bundle:
+    name: Build release bundle
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14.3"
+
+      - name: Build release assets
+        run: python scripts/build_release.py --output-dir dist/ci
+
+      - name: Smoke test extracted Unix bundle
+        run: |
+          mkdir -p dist/ci/extracted
+          tar -xzf dist/ci/assets/triage_*_bundle.tar.gz -C dist/ci/extracted
+          chmod +x dist/ci/extracted/triage
+          dist/ci/extracted/triage --help
+
+      - name: Upload CI bundle artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: triage-ci-bundle
+          path: dist/ci/assets/

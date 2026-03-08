@@ -8,6 +8,7 @@ OpenIncidents is in a documentation-first phase. The canonical source of truth f
 - `triage-handler` is the runtime contract.
 - GCP and AWS are official deployment targets.
 - Go and Python are the official handler template runtimes.
+- Handler template source trees live under `triage/templates/go/gcp`, `triage/templates/go/aws`, `triage/templates/python/gcp`, and `triage/templates/python/aws`.
 - Slack and Discord are primary notification channels, with optional Jira escalation.
 - OpenAI and Anthropic are the named optional LLM providers.
 

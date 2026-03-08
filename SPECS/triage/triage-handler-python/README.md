@@ -7,7 +7,7 @@ Describe the Python-specific implementation shape of `triage-handler` as a serve
 ## Scope
 
 - In scope:
-  - Python implementation detail for GCP and AWS receiver service entrypoints plus local replay
+  - Python implementation detail for the GCP and AWS cloud-specific variants of the receiver service plus local replay
   - module-level organization and execution model
   - Slack, Discord, and Jira integration detail for the Python receiver service
   - packaging and local validation expectations for Python
@@ -19,6 +19,7 @@ Describe the Python-specific implementation shape of `triage-handler` as a serve
 ## Responsibilities
 
 - Specialize the shared `triage-handler` contract for Python.
+- Define the two official Python handler variants: one for GCP and one for AWS.
 - Define how the Python implementation structures adapters, reduction flow, and notifier clients.
 - Document Python-specific build and deployment expectations for the serverless receiver service on Cloud Run and Lambda.
 - Stay aligned with the shared config, notification, IAM, and infra contracts.
@@ -28,11 +29,20 @@ Describe the Python-specific implementation shape of `triage-handler` as a serve
 - Runtime language: Python
 - Shared runtime contract source: [../10-runtime/11-handler.md](../10-runtime/11-handler.md)
 - Notification contract source: [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
+- Variant model:
+  - `triage-handler-python` is delivered as two official cloud-specific variants selected by `triage template download --cloud ... --runtime python`
+  - the GCP variant lives at `triage/templates/python/gcp`, targets Cloud Run ingress, and contains only GCP-specific runtime wiring plus shared Python modules
+  - the AWS variant lives at `triage/templates/python/aws`, targets Lambda ingress, and contains only AWS-specific runtime wiring plus shared Python modules
+  - both variants keep `triage-handler` as the deployed runtime name
 - Service role:
   - the Python implementation represents a serverless receiver service for pushed log events
   - on GCP it exposes the Cloud Run HTTP endpoint
   - on AWS it exposes the Lambda runtime entrypoint
-- Standard-library baseline:
+- HTTP routing baseline:
+  - the documented Python GCP variant uses `Starlette` as the lightweight routing framework for Cloud Run ingress and optional local HTTP smoke validation
+  - route handlers stay thin and delegate decoding, normalization, reduction, enrichment, and notification decisions to internal service modules
+  - the Lambda entrypoint reuses the same internal orchestration layer without requiring HTTP emulation
+- Utility baseline:
   - local helper entrypoints use only Python standard library modules
   - HTTP and JSON handling for Slack, Discord, and Jira use standard-library modules
   - third-party CLI frameworks are not allowed in the documented Python path
@@ -52,8 +62,9 @@ Describe the Python-specific implementation shape of `triage-handler` as a serve
 ## Locked decisions
 
 - Python is one of the two official handler implementation languages.
+- Python handler delivery is split into two official variants: one for GCP and one for AWS.
 - The Python implementation represents the deployed receiver service, not just an internal callback.
-- The documented Python path uses standard-library modules for local helper entrypoints and outbound integrations.
+- The documented Python path uses `Starlette` as the lightweight HTTP routing layer while keeping local helper entrypoints and outbound integrations on the standard library baseline.
 - Python does not define a second official `triage` CLI.
 
 ## Open questions
@@ -63,5 +74,5 @@ Describe the Python-specific implementation shape of `triage-handler` as a serve
 
 ## Deferred items
 
-- Alternative Python runtime variants beyond the documented standard-library baseline
+- Alternative Python routing or runtime variants beyond the documented `Starlette` baseline
 - Additional packaging optimizations beyond the baseline Cloud Run and Lambda paths

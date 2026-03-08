@@ -54,6 +54,9 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
       "enabled": false
     }
   },
+  "jira": {
+    "issue_type_default": "Bug"
+  },
   "llm": {
     "provider": "openai",
     "model": "gpt-4.1",
@@ -68,6 +71,8 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
   - `bootstrap_complete` is derived state and must reflect whether the minimum bootstrap contract is currently satisfied
   - `default_cloud` may be `gcp`, `aws`, or absent until a selection is made
   - `clouds.gcp.enabled` and `clouds.aws.enabled` represent the latest successful live validation result for each cloud
+  - `jira.issue_type_default` defaults to `Bug`
+  - `jira.issue_type_default` is the local operator default used when the project `triage.yaml` does not yet declare `integrations.jira.issue_type`
   - `llm.provider` must be one of `none`, `openai`, or `anthropic`
   - `llm.model` is required when `llm.provider` is not `none`
   - `llm.api_key_env` defaults to `OPENAI_API_KEY` for OpenAI and `ANTHROPIC_API_KEY` for Anthropic
@@ -75,10 +80,13 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
 - Lifecycle rules:
   - if the state file does not exist, `triage` is considered not initialized
   - `triage init` creates the state file and may leave it partial if the bootstrap flow does not complete
+  - `triage init` must create `jira.issue_type_default` with `Bug` when the field is absent
   - `triage settings set <key> <value>` updates only the local state file
   - the public CLI key `llm.api_key` maps to the persisted field `llm.api_key_value`
+  - the public CLI key `jira.issue_type_default` maps directly to the persisted field of the same name
   - `triage config show --local` reads from this file and must redact secret values in human-facing output
   - `triage config where llm.api_key` resolves to this file
+  - `triage config where jira.issue_type_default` resolves to this file
   - `triage config wizard` mutates this file when the selected key is local-scoped
   - `triage settings validate --cloud gcp|aws|all` reruns live credential and tooling checks, updates cloud validation results, and recomputes `bootstrap_complete`
   - `bootstrap_complete` becomes `true` only when at least one cloud has validated successfully, an LLM provider has been chosen explicitly, and a token exists if the provider is not `none`
@@ -100,6 +108,7 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
 
 - `triage` keeps bootstrap state in a per-user JSON file rather than in `triage.yaml`.
 - The local state file is the documented persistence location for the raw LLM token during the current phase.
+- The local state file also persists the operator default for Jira issue type.
 - `bootstrap_complete` is recomputed after `init`, `settings set`, and `settings validate`.
 - The local CLI home uses `~/.triage/` on Unix-like systems and `%APPDATA%/triage/` on Windows for operator discoverability.
 - The local state file is cross-platform and must not depend on third-party Python packages.

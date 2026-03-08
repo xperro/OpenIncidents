@@ -35,7 +35,7 @@ Describe how the Python implementation of `triage-handler` as a receiver service
   - uses `integrations.discord.webhook_env`
   - mirrors the shared incident payload contract used for chat notifications
 - Jira:
-  - uses `integrations.jira.base_url`, `project_key`, `email_env`, and `token_env`
+  - uses `integrations.jira.base_url`, `project_key`, `issue_type`, `email_env`, and `token_env`
   - creates tickets only when policy allows escalation
 - Failure handling:
   - network or remote API failures must be logged with request correlation and integration target

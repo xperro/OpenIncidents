@@ -42,6 +42,7 @@ Define the notification and ticketing contracts that turn reduced incidents into
   - suggested fix when LLM analysis is enabled
 - Jira ticket must include:
   - summary using environment, service, and severity
+  - issue type selected from `integrations.jira.issue_type`
   - reduced context and truncated stacktrace in the description
   - labels for `triage`, service, environment, and severity
 - Integration enablement:
@@ -52,11 +53,15 @@ Define the notification and ticketing contracts that turn reduced incidents into
   - a Jira ticket is created only when `integrations.jira.enabled` is `true`
   - a Jira ticket is created only when the reduced incident severity is greater than or equal to `policy.jira_min_severity`
   - the documented MVP default for `policy.jira_min_severity` is `CRITICAL`
+  - the documented MVP default for `integrations.jira.issue_type` is `Bug`
+  - if the project config omits `integrations.jira.issue_type`, the CLI must materialize the local `jira.issue_type_default` from `config.json`, defaulting that local value to `Bug` when absent
   - chat notifications to Slack and Discord still happen when their routing is enabled, even if a Jira ticket is also created
   - the runtime creates at most one Jira ticket per fingerprint within the current aggregation window
 - Operator discovery path:
   - `triage config where integrations.jira.enabled`
+  - `triage config where integrations.jira.issue_type`
   - `triage config where policy.jira_min_severity`
+  - `triage config where jira.issue_type_default`
   - `triage config wizard`
 
 ## Dependencies
@@ -75,6 +80,7 @@ Define the notification and ticketing contracts that turn reduced incidents into
 - Slack and Discord are the primary notification surfaces for actionable incidents.
 - Jira ticket content must be derived from reduced incident context rather than raw unbounded logs.
 - Jira escalation starts from severity `CRITICAL` in the documented MVP baseline.
+- Jira issue type defaults to `Bug` unless the operator overrides it.
 - Jira-related knobs must be discoverable from a single operator workflow.
 - Notification structure is cloud-agnostic and should not branch by provider in this document.
 

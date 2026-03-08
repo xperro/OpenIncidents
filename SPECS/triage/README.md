@@ -25,6 +25,7 @@ This directory is the canonical planning workspace for the `triage` specificatio
 - [10-runtime/10-cli.md](10-runtime/10-cli.md): CLI responsibilities, template handling, and deployment workflow
 - [10-runtime/11-handler.md](10-runtime/11-handler.md): shared serverless receiver service contract and runtime behavior across official templates
 - [10-runtime/12-cli-state.md](10-runtime/12-cli-state.md): per-user local bootstrap state and persistent CLI settings
+- [10-runtime/13-cli-release.md](10-runtime/13-cli-release.md): GitHub Actions CI, release packaging, and published CLI assets
 - [triage-handler-go/README.md](triage-handler-go/README.md): Go-specific receiver service implementation detail for `triage-handler`
 - [triage-handler-python/README.md](triage-handler-python/README.md): Python-specific receiver service implementation detail for `triage-handler`
 - [20-infra/20-gcp-terraform.md](20-infra/20-gcp-terraform.md): GCP deployment contract

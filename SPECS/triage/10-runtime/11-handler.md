@@ -36,6 +36,11 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
 - Official template runtimes:
   - Go
   - Python
+- Official template variants:
+  - Go has two cloud-specific template variants: one for GCP and one for AWS
+  - Python has two cloud-specific template variants: one for GCP and one for AWS
+  - each template variant keeps the runtime name `triage-handler` while specializing packaging and ingress for the selected cloud
+  - the physical template roots live under `triage/templates/` as `triage/templates/go/gcp`, `triage/templates/go/aws`, `triage/templates/python/gcp`, and `triage/templates/python/aws`
 - Service model:
   - `triage-handler` is the serverless receiver service for pushed log events
   - on GCP, the service is an HTTP endpoint hosted in Cloud Run
@@ -58,6 +63,7 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
   - cross-instance dedupe is not guaranteed on Cloud Run or Lambda in the MVP
   - stacktrace or payload truncation before notification and LLM submission
   - Jira ticket creation begins at severity `CRITICAL` when Jira is enabled
+  - escalated Jira tickets use issue type `Bug` by default unless the effective project config overrides it
 - Integration handoff contract:
   - runtime produces incident data with summary, severity, service, env, counts, links, and optional LLM output
   - Slack, Discord, and Jira formatting rules live in [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
@@ -67,6 +73,8 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
   - apply severity thresholds before notification and ticket creation
   - ship notifier clients for Slack, Discord, and Jira
   - expose a basic local development mode for replaying payloads
+  - ship as a cloud-specific template variant selected for either GCP or AWS rather than one cross-cloud template tree
+  - be distributed from the physical `triage/templates/` tree copied by the CLI rather than generated from placeholder code
 - Example source envelopes:
 
 ```json
@@ -118,6 +126,7 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
 
 - `triage-handler` remains the runtime name.
 - The runtime contract is language-agnostic even though official templates are provided in Go and Python.
+- Each official handler language is documented and distributed as two cloud-specific template variants: GCP and AWS.
 - Shared runtime behavior stays in this document; language-specific implementation detail belongs in `triage-handler-go/` and `triage-handler-python/`.
 - `triage-handler` is a serverless receiver service, not just a standalone callback or function body.
 - GCP traffic reaches the runtime through Pub/Sub push on Cloud Run.
@@ -126,6 +135,7 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
 - The MVP uses per-instance in-memory dedupe and rate-limit state rather than a shared durable store.
 - Linked repository access uses config-declared Git URLs with credential references from environment variables.
 - Runtime logs must include request correlation and incident fingerprint data.
+- Escalated Jira tickets default to issue type `Bug` unless the project config sets a different value.
 
 ## Open questions
 

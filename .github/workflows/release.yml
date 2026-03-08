@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to release, for example v0.1.0"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14.3"
+
+      - name: Resolve release tag
+        id: meta
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Build release assets
+        run: python scripts/build_release.py --tag "${{ steps.meta.outputs.tag }}" --output-dir dist/release
+
+      - name: Smoke test extracted Unix bundle
+        run: |
+          mkdir -p dist/release/extracted
+          tar -xzf "dist/release/assets/triage_${{ steps.meta.outputs.version }}_bundle.tar.gz" -C dist/release/extracted
+          chmod +x dist/release/extracted/triage
+          dist/release/extracted/triage --help
+
+      - name: Publish GitHub Release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          files: |
+            dist/release/assets/triage.pyz
+            dist/release/assets/triage
+            dist/release/assets/triage.cmd
+            dist/release/assets/triage_${{ steps.meta.outputs.version }}_bundle.tar.gz
+            dist/release/assets/triage_${{ steps.meta.outputs.version }}_bundle.zip
+            dist/release/assets/triage_${{ steps.meta.outputs.version }}_sha256sums.txt
+
+  validate-release:
+    name: Validate published assets (${{ matrix.os }})
+    needs: build-release
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    steps:
+      - name: Download and validate Unix bundle
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build-release.outputs.tag }}
+          VERSION: ${{ needs.build-release.outputs.version }}
+        run: |
+          mkdir -p release-assets extracted
+          gh release download "${TAG}" --pattern "triage_${VERSION}_bundle.tar.gz" --dir release-assets
+          tar -xzf "release-assets/triage_${VERSION}_bundle.tar.gz" -C extracted
+          chmod +x extracted/triage
+          extracted/triage --help
+
+      - name: Download and validate Windows bundle
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.build-release.outputs.tag }}
+          VERSION: ${{ needs.build-release.outputs.version }}
+        run: |
+          $bundleName = "triage_$($env:VERSION)_bundle.zip"
+          New-Item -ItemType Directory -Path release-assets -Force | Out-Null
+          New-Item -ItemType Directory -Path extracted -Force | Out-Null
+          gh release download $env:TAG --pattern $bundleName --dir release-assets
+          Expand-Archive -Path "release-assets/$bundleName" -DestinationPath extracted
+          cmd /c extracted\triage.cmd --help
+          py extracted\triage.pyz --help

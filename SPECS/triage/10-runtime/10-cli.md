@@ -67,6 +67,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - the preferred invocation on macOS and Linux is `triage <command>` when the launcher and `triage.pyz` are on `PATH`
   - the preferred invocation on Windows is `triage <command>` through `triage.cmd`, with `py triage.pyz <command>` as the fallback form
   - the CLI must remain runnable without `pip`, `pipx`, or third-party package managers
+  - GitHub Actions is the canonical automation path for CI validation and publishing GitHub Release assets as defined in [13-cli-release.md](13-cli-release.md)
 - Init contract:
   - `triage init` is interactive and is the required bootstrap entrypoint for the CLI
   - `triage init` asks which cloud to validate now: `gcp`, `aws`, or both
@@ -78,8 +79,9 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 - Settings contract:
   - `triage settings show` prints the current local CLI state with secret values redacted in human-facing output
   - `triage settings set <key> <value>` mutates only the local CLI state file
-  - documented writable keys are `default_cloud`, `llm.provider`, `llm.model`, and `llm.api_key`
+  - documented writable keys are `default_cloud`, `jira.issue_type_default`, `llm.provider`, `llm.model`, and `llm.api_key`
   - `llm.api_key` is the public CLI key name and maps to the persisted `llm.api_key_value` field in the local state file
+  - `jira.issue_type_default` is the local default used when new or rewritten project config does not yet declare `integrations.jira.issue_type`
   - `triage settings set llm.api_key <value>` may complete bootstrap without rerunning `triage init`
 - Configuration discovery contract:
   - `triage config` is the operator-friendly configuration surface
@@ -92,6 +94,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage config wizard` is the interactive reconfiguration flow for common operator changes
   - the top-level `triage config wizard` categories must include Jira, chat routing, LLM, cloud filter overrides, and default cloud
   - `triage config wizard` edits `triage.yaml` for project-scoped keys and the local CLI state file for local-scoped keys
+  - when the Jira project block is created or rewritten without an explicit issue type, `triage config wizard` must materialize `integrations.jira.issue_type` from local `jira.issue_type_default`, defaulting that local value to `Bug` when absent
   - `triage config wizard` may be used before bootstrap completes
 - Project config editability contract:
   - `triage.yaml` remains YAML
@@ -104,13 +107,26 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage template download --cloud gcp|aws --runtime go|python --output /abs/path [--force]`
   - `--output` is mandatory and must be an absolute path
   - if `--output` points to an existing non-empty directory, the command fails unless `--force` is supplied
-  - templates are versioned with the CLI release and extracted locally rather than fetched ad hoc
-  - the downloaded Go template root must include `README.md`, `.env.example`, `cmd/service/`, `cmd/local/`, `internal/`, and `sample-events/`
-  - the downloaded Python template root must include `README.md`, `.env.example`, `main.py`, `adapters/`, `notifiers/`, and `sample-events/`
+  - templates are versioned with the CLI release and copied from the canonical `triage/templates/` source tree rather than generated ad hoc
+  - the canonical source tree is `triage/templates/<runtime>/<cloud>` inside the CLI source tree
+  - release bundles must preserve those templates as embedded CLI resources inside `triage.pyz`
+  - the CLI must treat `triage/templates/` as the only source of truth for handler template contents
+  - `--cloud` selects one of two official cloud-specific handler variants for the chosen runtime: GCP or AWS
+  - the downloaded Go template root must be copied from either `triage/templates/go/gcp` or `triage/templates/go/aws`
+  - the downloaded Go GCP template root must include `README.md`, `.env.example`, `go.mod`, `go.sum`, `cmd/triage-handler/`, `cmd/triage-handler-local/`, `internal/`, and `sample-events/`
+  - the downloaded Go AWS template root must include `README.md`, `.env.example`, `go.mod`, `go.sum`, `cmd/triage-handler-lambda/`, `cmd/triage-handler-local/`, `internal/`, and `sample-events/`
+  - the downloaded Python template root must be copied from either `triage/templates/python/gcp` or `triage/templates/python/aws`
+  - the downloaded Python GCP template root must include `README.md`, `.env.example`, `requirements.txt`, `main.py`, `app.py`, `adapters/`, `notifiers/`, shared runtime modules, and `sample-events/`
+  - the downloaded Python AWS template root must include `README.md`, `.env.example`, `requirements.txt`, `main.py`, `lambda_entrypoint.py`, `adapters/`, `notifiers/`, shared runtime modules, and `sample-events/`
+  - template copy must preserve the source tree exactly except for filtering junk files such as `__pycache__`, `.pytest_cache`, `.DS_Store`, `.git`, and `*.pyc`
 - Infrastructure apply contract:
   - `triage infra apply --cloud gcp|aws --runtime go|python --handler-path /abs/path`
   - `--handler-path` is required when packaging or building the receiver service for deployment
   - `--handler-path` must be absolute
+  - for the Go GCP runtime, `--handler-path` must contain `go.mod`, `go.sum`, and `cmd/triage-handler/`
+  - for the Go AWS runtime, `--handler-path` must contain `go.mod`, `go.sum`, and `cmd/triage-handler-lambda/`
+  - for the Python GCP runtime, `--handler-path` must contain `requirements.txt`, `main.py`, and `app.py`
+  - for the Python AWS runtime, `--handler-path` must contain `requirements.txt`, `main.py`, and `lambda_entrypoint.py`
 - Credential model:
   - GCP uses local Application Default Credentials
   - GCP relies on locally available `gcloud` and `terraform`
@@ -158,6 +174,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 - Config contract: [../30-integrations/30-config.md](../30-integrations/30-config.md)
 - Config operations guide: [../30-integrations/33-config-operations.md](../30-integrations/33-config-operations.md)
 - Local state contract: [12-cli-state.md](12-cli-state.md)
+- Release automation contract: [13-cli-release.md](13-cli-release.md)
 - Infra contracts: [../20-infra/20-gcp-terraform.md](../20-infra/20-gcp-terraform.md), [../20-infra/21-aws-terraform.md](../20-infra/21-aws-terraform.md)
 - Open backlog: [../90-open-questions.md](../90-open-questions.md)
 

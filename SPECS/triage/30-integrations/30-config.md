@@ -92,6 +92,7 @@ integrations:
     enabled: true
     base_url: https://example.atlassian.net
     project_key: ABC
+    issue_type: Bug|Task|<string>
     email_env: JIRA_EMAIL
     token_env: JIRA_API_TOKEN
 ```
@@ -113,7 +114,9 @@ integrations:
   - cloud-specific manual overrides live under `gcp` and `aws`
 - Jira operator path:
   - `triage config where integrations.jira.enabled`
+  - `triage config where integrations.jira.issue_type`
   - `triage config where policy.jira_min_severity`
+  - `triage config where jira.issue_type_default`
   - `triage config wizard`
 - Precedence model:
   - CLI flags override `triage.yaml`
@@ -121,12 +124,15 @@ integrations:
   - the local CLI state file overrides tool defaults for persistent per-user bootstrap values
   - `.env` provides local development values for environment variables
   - process environment variables satisfy secret references declared in config
+  - `integrations.jira.issue_type` is the project-scoped runtime value; when it is absent, the CLI materializes the local `jira.issue_type_default` from `config.json`
 - Validation rules:
   - `triage init` and the local CLI state must be complete before `template download`, `infra generate`, `infra plan`, `infra apply`, or `run` may execute
   - exactly one cloud path is active per deployment because `cloud` selects either `gcp` or `aws`
   - the selected cloud block must be complete for `infra generate`, `infra plan`, and `infra apply`
   - `policy.severity_min` follows the normalized GCP severity scale documented in the official [Google Cloud LogSeverity reference](https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.type#logseverity)
   - `policy.jira_min_severity` follows the same normalized severity scale and defaults to `CRITICAL`
+  - `integrations.jira.issue_type` defaults to `Bug`
+  - when `integrations.jira.issue_type` is absent, `triage` must ensure `jira.issue_type_default` exists in the local CLI state file and defaults to `Bug`, then write the effective value into generated or rewritten `triage.yaml`
   - when `cloud: aws`, `log_format` must be one of `json`, `space_delimited`, or `text`
   - `severity_field` is required when AWS `log_format` is `json`
   - `severity_word_position` is required when AWS `log_format` is `space_delimited`
@@ -158,6 +164,7 @@ integrations:
 - `triage.yaml` does not replace the per-user CLI state file.
 - Policy defaults include a 300-second aggregation window and dedupe enabled.
 - Policy defaults include `jira_min_severity: CRITICAL`.
+- Jira issue type defaults to `Bug` and remains operator-configurable through project config, with a local default stored in `config.json`.
 - The shared severity threshold uses the normalized `DEBUG` through `EMERGENCY` scale.
 - CLI overrides remain limited to selected operational fields rather than replacing the full config model.
 - Secret values are referenced through environment variable names, not embedded directly in the file.

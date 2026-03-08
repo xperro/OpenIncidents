@@ -65,11 +65,13 @@ Define the operator-facing workflow for finding, understanding, and changing `tr
 | Key | Purpose | Scope | Physical location | Recommended command | Takes effect |
 | --- | --- | --- | --- | --- | --- |
 | `integrations.jira.enabled` | Enable or disable Jira ticket creation | `project` | `./triage.yaml` | `triage config wizard` | Next `triage run` and next deployed runtime after `triage infra apply` |
+| `integrations.jira.issue_type` | Set the Jira issue type used by the project runtime | `project` | `./triage.yaml` | `triage config wizard` | Next `triage run` and next deployed runtime after `triage infra apply` |
 | `policy.jira_min_severity` | Change the Jira escalation threshold | `project` | `./triage.yaml` | `triage config wizard` | Next `triage run` and next deployed runtime after `triage infra apply` |
 | `integrations.routing` | Choose `slack`, `discord`, or `both` | `project` | `./triage.yaml` | `triage config wizard` | Next `triage run` and next deployed runtime after `triage infra apply` |
 | `llm.provider` | Select the project LLM provider default | `project` | `./triage.yaml` | `triage config wizard` | Next `triage run` and next deployed runtime after `triage infra apply` |
 | `llm.model` | Select the project LLM model default | `project` | `./triage.yaml` | `triage config wizard` | Next `triage run` and next deployed runtime after `triage infra apply` |
 | `llm.api_key` | Store the raw LLM API token for the local operator | `local` | `~/.triage/config.json` or `%APPDATA%/triage/config.json` | `triage settings set llm.api_key <value>` or `triage config wizard` | Next command that needs bootstrap completion or LLM-backed execution |
+| `jira.issue_type_default` | Set the local default Jira issue type used when new project config omits it | `local` | `~/.triage/config.json` or `%APPDATA%/triage/config.json` | `triage settings set jira.issue_type_default <value>` or `triage config wizard` | Next scaffold or wizard rewrite that materializes Jira config; existing deployed runtimes change only after `triage infra apply` |
 | `default_cloud` | Set the local operator default cloud | `local` | `~/.triage/config.json` or `%APPDATA%/triage/config.json` | `triage settings set default_cloud <value>` or `triage config wizard` | Next CLI invocation |
 | `gcp.log_filter_override` | Replace the derived GCP Logging filter | `project` | `./triage.yaml` | `triage config wizard` | Next `triage infra generate`, `triage infra plan`, or `triage infra apply`; deployed effect after apply |
 | `aws.filter_pattern_override` | Replace the derived AWS Logs subscription filter | `project` | `./triage.yaml` | `triage config wizard` | Next `triage infra generate`, `triage infra plan`, or `triage infra apply`; deployed effect after apply |
@@ -88,6 +90,7 @@ Define the operator-facing workflow for finding, understanding, and changing `tr
 - `triage settings` remains the low-level local-state surface.
 - Project configuration continues to live in `triage.yaml`.
 - Per-user bootstrap state continues to live outside the repository in the local CLI state file.
+- Jira issue type is a project-scoped runtime value with a local default stored in `config.json`.
 - Frequent operator changes must be discoverable without reading multiple specs manually.
 
 ## Open questions
