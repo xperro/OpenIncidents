@@ -46,6 +46,7 @@ Not included:
 
 ## Project Structure
 
+```text
 monitor-agent/
 ├─ README.md
 ├─ LEEME.md
@@ -62,6 +63,7 @@ monitor-agent/
 │     ├─ domain/
 │     └─ utils/
 └─ tests/
+```
 
 ---
 
