@@ -42,6 +42,8 @@ Define the canonical security posture and IAM baseline for OpenIncidents across 
 - Secret-handling baseline:
   - environment variables are acceptable for the documented MVP path
   - local `.env` is acceptable for development only and must stay out of version control
+  - the raw LLM token may be stored in the per-user CLI state file during the current planning phase
+  - the local CLI state file must live outside the repo and use best-effort restrictive filesystem permissions
   - Secret Manager and Secrets Manager become the preferred hardening path before production use
   - no documentation may silently imply that raw secrets belong in `triage.yaml`
 
@@ -52,6 +54,7 @@ Define the canonical security posture and IAM baseline for OpenIncidents across 
 - GCP infra contract: [../20-infra/20-gcp-terraform.md](../20-infra/20-gcp-terraform.md)
 - AWS infra contract: [../20-infra/21-aws-terraform.md](../20-infra/21-aws-terraform.md)
 - LLM contract: [../30-integrations/31-llm.md](../30-integrations/31-llm.md)
+- CLI local state contract: [../10-runtime/12-cli-state.md](../10-runtime/12-cli-state.md)
 - Open backlog: [../90-open-questions.md](../90-open-questions.md)
 
 ## Locked decisions
@@ -60,12 +63,13 @@ Define the canonical security posture and IAM baseline for OpenIncidents across 
 - GCP and AWS infra documents must link here rather than duplicate policy text.
 - LLM submission requires redaction and payload reduction before provider calls.
 - Terraform-driven deployment by `triage` does not justify broader standing permissions than the documented resource set requires.
+- The documented MVP may persist the raw LLM token only in the per-user CLI state file, never in `triage.yaml` or repo-tracked files.
 - Persistent storage of sensitive incident context is not part of the current MVP plan.
 
 ## Open questions
 
 - See [OQ-105](../90-open-questions.md#oq-105) for the exact mandatory redaction baseline.
-- See [OQ-107](../90-open-questions.md#oq-107) for the threshold at which cloud secret stores become mandatory.
+- See [OQ-107](../90-open-questions.md#oq-107) for the threshold at which cloud secret stores or OS-native secret storage become mandatory.
 
 ## Deferred items
 

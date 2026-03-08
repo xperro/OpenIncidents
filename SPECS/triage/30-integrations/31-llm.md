@@ -21,6 +21,7 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
 
 - Define when LLM analysis is optional and how it fits into the pipeline.
 - Keep provider selection separate from the stable core domain model.
+- Define where the user-level provider credential lives during the current planning phase.
 - Define the required strict JSON output shape.
 - Link to the canonical security rules for redaction and payload limits.
 
@@ -31,6 +32,11 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
   - `openai`
   - `anthropic`
 - Model selection remains free-form and user-provided.
+- Provider bootstrap contract:
+  - `triage init` requires the user to choose `none`, `openai`, or `anthropic`
+  - if the provider is `openai` or `anthropic`, the user must provide both a model and an API token
+  - raw provider tokens are persisted only in the per-user CLI local state file documented in [../10-runtime/12-cli-state.md](../10-runtime/12-cli-state.md)
+  - `triage.yaml` may reference an environment-variable name for runtime wiring, but it must never store the raw API token
 - Required result contract: `LLMResult`
   - `summary`
   - `suspected_cause`
@@ -48,6 +54,7 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
 - Architecture baseline: [../01-system-architecture.md](../01-system-architecture.md)
 - Runtime contract: [../10-runtime/11-handler.md](../10-runtime/11-handler.md)
 - Config contract: [30-config.md](30-config.md)
+- CLI local state contract: [../10-runtime/12-cli-state.md](../10-runtime/12-cli-state.md)
 - Security baseline: [../40-governance/40-security-iam.md](../40-governance/40-security-iam.md)
 - Open backlog: [../90-open-questions.md](../90-open-questions.md)
 
@@ -56,12 +63,13 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
 - LLM analysis is optional and never precedes reduction.
 - OpenAI and Anthropic are the only named providers in the current MVP documentation.
 - The provider and model are selected by the user rather than inferred automatically.
+- The raw LLM API token is stored only in the local CLI state file during the current documented phase.
 - The result must be strict JSON that can feed downstream notification logic.
 
 ## Open questions
 
 - See [OQ-105](../90-open-questions.md#oq-105) for the exact mandatory redaction baseline.
-- See [OQ-107](../90-open-questions.md#oq-107) for the secret-management threshold before production use.
+- See [OQ-107](../90-open-questions.md#oq-107) for the secret-management threshold before production use and for replacing the documented local token store.
 
 ## Deferred items
 

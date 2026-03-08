@@ -37,6 +37,6 @@ Affected docs: [01-system-architecture.md](01-system-architecture.md), [10-runti
 
 Question: At what point should cloud secret stores replace raw environment variables in the MVP path?
 
-Current default: environment variables are acceptable for local development and early documentation, but GCP Secret Manager and AWS Secrets Manager should become the expected path before production hardening.
+Current default: environment variables are acceptable for local development, and the per-user CLI local state file is acceptable for bootstrap-time LLM token persistence during the current documentation phase, but GCP Secret Manager, AWS Secrets Manager, or stronger local secret storage should become the expected path before production hardening.
 
-Affected docs: [00-product-overview.md](00-product-overview.md), [20-infra/20-gcp-terraform.md](20-infra/20-gcp-terraform.md), [20-infra/21-aws-terraform.md](20-infra/21-aws-terraform.md), [40-governance/40-security-iam.md](40-governance/40-security-iam.md)
+Affected docs: [00-product-overview.md](00-product-overview.md), [10-runtime/12-cli-state.md](10-runtime/12-cli-state.md), [20-infra/20-gcp-terraform.md](20-infra/20-gcp-terraform.md), [20-infra/21-aws-terraform.md](20-infra/21-aws-terraform.md), [30-integrations/30-config.md](30-integrations/30-config.md), [30-integrations/31-llm.md](30-integrations/31-llm.md), [40-governance/40-security-iam.md](40-governance/40-security-iam.md)

@@ -15,6 +15,16 @@
 - Prefer clarifying intent, structure, and contracts in `SPECS/triage/` before writing product code, Terraform, generators, or automation.
 - If requirements remain ambiguous, add or update an entry in `SPECS/triage/90-open-questions.md` rather than guessing.
 
+## Planning freeze
+
+- A planning freeze is active starting on 2026-03-08.
+- Until the user explicitly lifts this freeze, do not write product code, Terraform, generators, or automation in this repository.
+- During the freeze, only Markdown documentation updates are allowed.
+- During the freeze, commits and pushes are allowed only when the change set consists exclusively of `.md` files.
+- Directory creation, rename, move, or deletion is allowed during the freeze only when it is required for `.md` files and no non-Markdown file is changed.
+- If any non-`.md` file change is present, do not commit and do not push until the user explicitly lifts the freeze.
+- Do not treat 2026-03-09 or 2026-03-10 as an automatic end date; the freeze ends only through explicit user direction.
+
 ## Required reading before implementation
 
 - Start with `SPECS/triage/README.md`.

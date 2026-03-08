@@ -21,6 +21,7 @@ Define the canonical configuration file and precedence rules that drive OpenInci
 
 - Provide one human-editable configuration entrypoint for the planned toolkit.
 - Define which values live in config versus environment variables.
+- Define how project configuration differs from persistent local CLI state.
 - Define precedence between config, flags, and runtime defaults.
 - Keep shared policy values out of component-specific ad hoc files.
 
@@ -28,6 +29,7 @@ Define the canonical configuration file and precedence rules that drive OpenInci
 
 - Canonical config file: `triage.yaml`
 - Development secret source: local `.env` file (must remain untracked)
+- Local CLI bootstrap state: per-user JSON file documented in [../10-runtime/12-cli-state.md](../10-runtime/12-cli-state.md)
 - MVP schema:
 
 ```yaml
@@ -91,12 +93,19 @@ integrations:
     token_env: JIRA_API_TOKEN
 ```
 
+- Separation of concerns:
+  - `triage.yaml` is project configuration and may be versioned
+  - the CLI local state file is per-user bootstrap state and must never live inside the repo
+  - raw LLM API keys do not belong in `triage.yaml`
+  - `llm.api_key_env` is only an environment-variable reference for runtime wiring, not the secret value itself
 - Precedence model:
   - CLI flags override `triage.yaml`
-  - `triage.yaml` overrides tool defaults
+  - `triage.yaml` overrides the local CLI state file for project-scoped settings
+  - the local CLI state file overrides tool defaults for persistent per-user bootstrap values
   - `.env` provides local development values for environment variables
   - process environment variables satisfy secret references declared in config
 - Validation rules:
+  - `triage init` and the local CLI state must be complete before `template download`, `infra generate`, `infra plan`, `infra apply`, or `run` may execute
   - exactly one cloud path is active per deployment because `cloud` selects either `gcp` or `aws`
   - the selected cloud block must be complete for `infra generate`, `infra plan`, and `infra apply`
   - `policy.severity_min` follows the normalized GCP severity scale documented in the official [Google Cloud LogSeverity reference](https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.type#logseverity)
@@ -118,6 +127,7 @@ integrations:
 - Product baseline: [../00-product-overview.md](../00-product-overview.md)
 - Architecture baseline: [../01-system-architecture.md](../01-system-architecture.md)
 - CLI contract: [../10-runtime/10-cli.md](../10-runtime/10-cli.md)
+- CLI local state contract: [../10-runtime/12-cli-state.md](../10-runtime/12-cli-state.md)
 - Runtime contract: [../10-runtime/11-handler.md](../10-runtime/11-handler.md)
 - LLM contract: [31-llm.md](31-llm.md)
 - Notification contract: [32-slack-jira.md](32-slack-jira.md)
@@ -126,6 +136,7 @@ integrations:
 ## Locked decisions
 
 - `triage.yaml` is the shared configuration entrypoint.
+- `triage.yaml` does not replace the per-user CLI state file.
 - Policy defaults include a 300-second aggregation window and dedupe enabled.
 - The shared severity threshold uses the normalized `DEBUG` through `EMERGENCY` scale.
 - CLI overrides remain limited to selected operational fields rather than replacing the full config model.
@@ -138,7 +149,7 @@ integrations:
 ## Open questions
 
 - See [OQ-104](../90-open-questions.md#oq-104) for the final location of dedupe and rate-limit state.
-- See [OQ-107](../90-open-questions.md#oq-107) for when secret-store references should replace the current MVP expectation.
+- See [OQ-107](../90-open-questions.md#oq-107) for when secret-store references should replace the current MVP expectation for local CLI token storage and runtime environment wiring.
 - See [OQ-106](../90-open-questions.md#oq-106) for the policy fields that should decide when Jira tickets are created.
 
 ## Deferred items

@@ -19,3 +19,5 @@ Read [../AGENTS.md](../AGENTS.md) first.
 - Confirm the relevant spec documents before recording decisions here.
 - Link topic notes back to `SPECS/triage/` whenever a note depends on repo documentation.
 - Reject contradictions instead of silently merging them.
+- While the planning freeze from `AGENTS.md` is active, do not use `.codex` to justify code changes or non-Markdown commits or pushes.
+- During the freeze, `.codex` may track only Markdown planning work and documentation context.
