@@ -1,4 +1,4 @@
-# Triage Bootstrap and Planning Freeze
+# Triage Bootstrap State
 
 ## Related specs
 
@@ -13,8 +13,6 @@
 - OpenIncidents is in a documentation-first phase.
 - `SPECS/triage/` remains the canonical planning surface.
 - `triage` is the canonical CLI name.
-- Do not write product code while the planning freeze remains active.
-- Commit and push are allowed during the freeze only for Markdown-only change sets.
 
 ## Decisions captured
 
@@ -22,7 +20,6 @@
 - Bootstrap validates real local cloud credentials and required binaries.
 - `triage` stores per-user bootstrap state in a cross-platform JSON file outside the repository.
 - The raw LLM token is stored only in the local CLI state file during the current planning phase.
-- The planning freeze blocks product code and any non-Markdown commit or push until the user explicitly lifts it.
 
 ## Open questions still relevant
 
