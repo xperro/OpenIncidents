@@ -11,8 +11,9 @@ Define the AWS deployment contract for routing CloudWatch Logs into the OpenInci
 - In scope:
   - CloudWatch Logs subscription wiring
   - Lambda deployment target for `triage-handler`
+  - zip packaging as the default deployment artifact
   - Terraform inputs and outputs required by the CLI and runtime
-  - default filter guidance for JSON and text logs
+  - default filter guidance for JSON, space-delimited, and text logs
 - Out of scope:
   - cross-account subscriptions
   - Kinesis or Firehose delivery
@@ -23,6 +24,7 @@ Define the AWS deployment contract for routing CloudWatch Logs into the OpenInci
 - Describe the minimum AWS resources required by the MVP path.
 - Define the Terraform variables and outputs that other components depend on.
 - State the default log filter concepts for CloudWatch Logs subscriptions.
+- Define the packaging handoff between `triage` and Terraform.
 - Link back to the canonical IAM and security policy instead of re-stating it here.
 
 ## Contracts
@@ -32,16 +34,24 @@ Define the AWS deployment contract for routing CloudWatch Logs into the OpenInci
   - Lambda execution role
   - CloudWatch Logs subscription filter
   - `aws_lambda_permission` for log delivery
+  - zip deployment artifact produced by `triage`
+- Default packaging:
+  - `zip` is the default package format for both official handler templates
 - Default filter concepts:
-  - JSON logs may use field-based severity patterns
-  - text logs may use string-based severity patterns
-  - exact filter syntax must be documented and validated once implementation begins
+  - JSON logs derive a field-based OR pattern from the configured `severity_field`
+  - space-delimited logs derive a positional pattern from `severity_word_position`
+  - text logs default to a broad subscription and runtime-side severity filtering unless `filter_pattern_override` is set
+  - exact syntax and examples follow the official [AWS CloudWatch Logs filter pattern syntax](https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/FilterAndPatternSyntax.html)
+- CLI workflow contract:
+  - `triage` packages the selected handler from an absolute local path into a zip artifact
+  - `triage` passes the resolved `lambda_package` into Terraform before `infra apply`
 - Core Terraform inputs:
   - `region`
   - `env`
   - `log_group_name`
   - `lambda_name`
   - `lambda_package`
+  - `package_format`
   - `filter_name`
   - `filter_pattern`
 - Core Terraform outputs:
@@ -59,15 +69,15 @@ Define the AWS deployment contract for routing CloudWatch Logs into the OpenInci
 ## Locked decisions
 
 - The AWS path is documented as CloudWatch Logs subscription to Lambda.
-- AWS remains configurable in the MVP contract, but delivery sequencing prioritizes GCP first.
-- AWS filter guidance stays high-level until exact patterns are tested.
+- `zip` is the default packaging format for the documented AWS MVP path.
+- Filter generation may be derived from log shape metadata or replaced with an explicit override.
+- AWS filter guidance stays high-level until exact patterns are tested in implementation.
 - Secret handling stays at the environment-variable level for the current MVP documentation, with stronger secret-store guidance tracked separately.
 - AWS infrastructure detail belongs here, not in runtime or governance documents.
 
 ## Open questions
 
-- See [OQ-103](../90-open-questions.md#oq-103) for the default Lambda packaging format.
-- See [OQ-107](../90-open-questions.md#oq-107) for when Parameter Store or Secrets Manager should become mandatory.
+- See [OQ-107](../90-open-questions.md#oq-107) for when Secrets Manager should become mandatory.
 
 ## Deferred items
 

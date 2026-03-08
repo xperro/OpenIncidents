@@ -1,8 +1,8 @@
-# Summary of `SPECS/chrisloarryn`
+# Summary of `SPECS/incidenWatcher`
 
 ## What it is
 
-`SPECS/chrisloarryn/` is the canonical planning and architecture area for OpenIncidents. It defines the product shape, runtime contracts, infrastructure targets, integration contracts, and unresolved design backlog.
+`SPECS/incidenWatcher/` is the canonical planning and architecture area for OpenIncidents. It defines the product shape, runtime contracts, infrastructure targets, integration contracts, and unresolved design backlog.
 
 ## Core idea
 
@@ -12,6 +12,7 @@ OpenIncidents is documented as a toolkit that turns relevant cloud logs into act
 - a runtime contract named `triage-handler`
 - official support for GCP and AWS
 - official handler templates in Go and Python
+- repository-context enrichment from linked source repositories
 - Slack and Discord notifications
 - optional Jira ticket creation
 - optional LLM analysis
@@ -38,6 +39,7 @@ The directory is intentionally organized by responsibility:
 - GCP and AWS are equally official deployment targets in the current documentation.
 - `triage` owns template download plus Terraform generation, plan, and apply in the documented user journey.
 - Slack, Discord, Jira, OpenAI, and Anthropic are the named MVP integrations.
+- Repository enrichment is part of the documented architecture after reduction and before optional LLM analysis.
 
 ## Runtime and operating model
 
@@ -46,9 +48,10 @@ The documented runtime flow is:
 1. ingest a log event from GCP, AWS, or local replay
 2. normalize it
 3. fingerprint and reduce it into an incident
-4. evaluate policy
-5. optionally call an LLM
-6. notify through Slack and Discord and optionally create Jira tickets
+4. enrich it with repository context
+5. evaluate policy
+6. optionally call an LLM
+7. notify through Slack and Discord and optionally create Jira tickets
 
 The CLI is expected to initialize projects, download templates, generate infrastructure files, run Terraform helpers, package and deploy handlers, and run the handler locally for development.
 

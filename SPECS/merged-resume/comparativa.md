@@ -1,12 +1,12 @@
-# Comparative Summary: `chrisloarryn` vs `xperro`
+# Comparative Summary: `incidenWatcher` vs `xperro`
 
 ## High-level comparison
 
-`SPECS/chrisloarryn/` is a structured spec set for OpenIncidents. `SPECS/xperro/` is still a minimal placeholder with no substantive design content yet.
+`SPECS/incidenWatcher/` is a structured spec set for OpenIncidents. `SPECS/xperro/` is still a minimal placeholder with no substantive design content yet.
 
 ## Side-by-side view
 
-| Area | `SPECS/chrisloarryn/` | `SPECS/xperro/` |
+| Area | `SPECS/incidenWatcher/` | `SPECS/xperro/` |
 | --- | --- | --- |
 | Purpose | Defines product, architecture, runtime, infra, integrations, and governance for OpenIncidents | No defined purpose yet beyond a placeholder file |
 | Structure | Multi-document spec tree with layered organization | Single text file |
@@ -21,7 +21,7 @@
 
 ## Practical interpretation
 
-- `chrisloarryn` can already guide future implementation work.
+- `incidenWatcher` can already guide future implementation work.
 - `xperro` cannot yet guide implementation because it has no real requirements or contracts.
 - If both directories are meant to represent ideas at similar maturity, `xperro` needs a substantial documentation pass to become comparable.
 

@@ -24,7 +24,7 @@ Date: 2026-03-08
 
 ## Open questions
 
-- The open-question set must be tracked only in the canonical specs; consult `SPECS/chrisloarryn/90-open-questions.md` for the current unresolved items.
+- The open-question set must be tracked only in the canonical specs; consult `SPECS/incidenWatcher/90-open-questions.md` for the current unresolved items.
 
 ## Next documentation changes
 
@@ -34,13 +34,12 @@ Date: 2026-03-08
 
 ## Session updates (MVP requirements alignment)
 
-- Updated canonical specs to align MVP with error-first log triage, linked repository analysis, optional LLM diagnostics, and Slack or Discord reporting.
-- Updated runtime direction to Python while keeping canonical names `OpenIncidents`, `triage`, and `triage-handler`.
-- Added explicit `.env` development posture in specs and created `.gitignore`/`.env.example` to prevent secret commits.
-- Added OQ-109 and OQ-110 in the canonical backlog for notifier precedence and repository access model decisions.
+- Updated canonical specs to align the MVP with error-first log triage, linked repository analysis, optional LLM diagnostics, and Slack or Discord reporting with optional Jira escalation.
+- Kept `triage-handler` as a shared runtime contract while documenting official Go and Python handler templates.
+- Added explicit `.env` development posture in specs and preserved the rule that secrets must not live directly in canonical config files.
 
 ## Session updates (decision closure)
 
-- Closed first-cloud sequencing as GCP-first while keeping AWS configurable in the MVP contract.
-- Closed notifier direction to configurable Slack/Discord routing (`slack`, `discord`, `both`) and deferred Jira to post-MVP.
-- Closed repository access direction to Git URL + credentials (env-referenced), with optional local cache path for efficient context extraction.
+- Closed the former uncertainty around GCP Pub/Sub push delivery on Cloud Run.
+- Closed the former uncertainty around AWS zip packaging for the documented MVP path.
+- Closed the former uncertainty around CLI ownership of Terraform `plan/apply` by keeping them in the official `triage` workflow.

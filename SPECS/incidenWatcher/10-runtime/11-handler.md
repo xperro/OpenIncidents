@@ -4,7 +4,7 @@ Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
-Define the Python runtime behavior that receives cloud log events, reduces noise, enriches with linked repository context, optionally calls an LLM, and emits actionable notifications.
+Define the shared runtime behavior of `triage-handler` across the official Go and Python templates, including repository enrichment and multichannel notification handoff.
 
 ## Scope
 
@@ -13,11 +13,11 @@ Define the Python runtime behavior that receives cloud log events, reduces noise
   - normalization, error filtering, fingerprinting, reduction, and decision policy
   - repository context lookup from linked Git repositories (with optional local cache path)
   - optional LLM invocation and structured result handling
-  - emission of Slack and Discord payloads
+  - emission of Slack, Discord, and Jira payloads
   - baseline runtime observability
 - Out of scope:
   - Terraform resource definitions
-  - final Slack and Discord presentation details beyond the payload boundary
+  - final Slack, Discord, and Jira presentation details beyond the payload boundary
   - durable storage or historical analytics
 
 ## Responsibilities
@@ -27,14 +27,17 @@ Define the Python runtime behavior that receives cloud log events, reduces noise
 - Aggregate repeated events within a bounded window and enforce dedupe behavior.
 - Retrieve relevant code context from linked repositories using incident-derived search keys.
 - Decide whether LLM analysis and notifications should run for a given incident.
-- Emit structured payloads for downstream Slack and Discord integrations.
+- Emit structured payloads for downstream Slack, Discord, and Jira integrations.
 - Include request identifiers and fingerprints in runtime logs.
 
 ## Contracts
 
+- Official template runtimes:
+  - Go
+  - Python
 - Supported ingress paths:
-  - GCP Pub/Sub event delivery to the runtime
-  - AWS CloudWatch Logs subscription delivery to the runtime
+  - GCP Pub/Sub push delivery to an HTTP endpoint on Cloud Run
+  - AWS CloudWatch Logs subscription delivery to a Lambda handler
   - local `stdin` or file input for development
 - Core runtime defaults:
   - severity filter: `ERROR` and `CRITICAL` by default
@@ -43,7 +46,13 @@ Define the Python runtime behavior that receives cloud log events, reduces noise
   - stacktrace or payload truncation before notification and LLM submission
 - Integration handoff contract:
   - runtime produces incident data with summary, severity, service, env, counts, links, and optional LLM output
-  - Slack and Discord formatting rules live in [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
+  - Slack, Discord, and Jira formatting rules live in [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
+- Template minimum contract:
+  - load config from `triage.yaml` plus referenced environment variables
+  - normalize source payloads to the same internal representation across Go and Python
+  - apply severity thresholds before notification and ticket creation
+  - ship notifier clients for Slack, Discord, and Jira
+  - expose a basic local development mode for replaying payloads
 - Runtime configuration is driven by [../30-integrations/30-config.md](../30-integrations/30-config.md), local `.env` for development, plus environment variables required by integrations
 
 ## Dependencies
@@ -59,17 +68,17 @@ Define the Python runtime behavior that receives cloud log events, reduces noise
 ## Locked decisions
 
 - `triage-handler` remains the runtime name.
-- The runtime implementation target is Python in the current design.
+- The runtime contract is language-agnostic even though official templates are provided in Go and Python.
+- GCP traffic reaches the runtime through Pub/Sub push on Cloud Run.
+- AWS traffic reaches the runtime through CloudWatch Logs subscription delivery on Lambda.
 - Reduction always happens before optional LLM analysis.
 - Linked repository access uses config-declared Git URLs with credential references from environment variables.
 - Runtime logs must include request correlation and incident fingerprint data.
 
 ## Open questions
 
-- See [OQ-102](../90-open-questions.md#oq-102) for the preferred GCP event delivery model.
-- See [OQ-103](../90-open-questions.md#oq-103) for the default AWS packaging format.
 - See [OQ-104](../90-open-questions.md#oq-104) for state placement of dedupe and rate limits.
-- See [OQ-106](../90-open-questions.md#oq-106) for channel routing granularity (global vs service-level).
+- See [OQ-106](../90-open-questions.md#oq-106) for Jira escalation thresholds relative to Slack and Discord.
 
 ## Deferred items
 

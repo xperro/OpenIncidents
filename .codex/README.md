@@ -19,4 +19,4 @@ Read [../AGENTS.md](../AGENTS.md) first.
 - Confirm the relevant spec documents before recording decisions here.
 - Link topic notes back to `SPECS/incidenWatcher/` whenever a note depends on repo documentation.
 - Reject contradictions instead of silently merging them.
-- Whenever `SPECS/chrisloarryn/` or `SPECS/xperro/` changes, update the corresponding summaries in `SPECS/merged-resume/` during the same workstream.
+- Whenever `SPECS/incidenWatcher/` or `SPECS/xperro/` changes, update the corresponding summaries in `SPECS/merged-resume/` during the same workstream.

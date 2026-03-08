@@ -4,19 +4,19 @@ Date: 2026-03-08
 
 ## Related specs
 
-- [OpenIncidents Specification Index](../../SPECS/chrisloarryn/README.md)
-- [OpenIncidents Product Overview](../../SPECS/chrisloarryn/00-product-overview.md)
-- [OpenIncidents System Architecture](../../SPECS/chrisloarryn/01-system-architecture.md)
-- [CLI Specification: triage](../../SPECS/chrisloarryn/10-runtime/10-cli.md)
-- [Runtime Specification: triage-handler](../../SPECS/chrisloarryn/10-runtime/11-handler.md)
-- [OpenIncidents Open Questions](../../SPECS/chrisloarryn/90-open-questions.md)
+- [OpenIncidents Specification Index](../../SPECS/incidenWatcher/README.md)
+- [OpenIncidents Product Overview](../../SPECS/incidenWatcher/00-product-overview.md)
+- [OpenIncidents System Architecture](../../SPECS/incidenWatcher/01-system-architecture.md)
+- [CLI Specification: triage](../../SPECS/incidenWatcher/10-runtime/10-cli.md)
+- [Runtime Specification: triage-handler](../../SPECS/incidenWatcher/10-runtime/11-handler.md)
+- [OpenIncidents Open Questions](../../SPECS/incidenWatcher/90-open-questions.md)
 
 ## AGENTS constraints
 
 - `AGENTS.md` is the source of truth for repo behavior and documentation workflow.
 - The repo remains documentation-first until specs are sufficiently closed.
 - Canonical naming stays `OpenIncidents`, `triage`, and `triage-handler`.
-- When `SPECS/chrisloarryn/` changes, related summaries in `SPECS/merged-resume/` must be updated in the same workstream.
+- When `SPECS/incidenWatcher/` changes, related summaries in `SPECS/merged-resume/` must be updated in the same workstream.
 - `.codex` notes cannot override canonical specs.
 
 ## Decisions

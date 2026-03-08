@@ -20,15 +20,15 @@ This directory is the canonical planning workspace for OpenIncidents.
 
 ## Layout
 
-- [00-product-overview.md](00-product-overview.md): product framing, MVP boundaries, and naming contract
+- [00-product-overview.md](00-product-overview.md): product framing, MVP boundaries, naming, and platform expectations
 - [01-system-architecture.md](01-system-architecture.md): cross-component flow and stable domain contracts
-- [10-runtime/10-cli.md](10-runtime/10-cli.md): CLI responsibilities and command surface
-- [10-runtime/11-handler.md](10-runtime/11-handler.md): runtime pipeline and handler behavior
+- [10-runtime/10-cli.md](10-runtime/10-cli.md): CLI responsibilities, template handling, and deployment workflow
+- [10-runtime/11-handler.md](10-runtime/11-handler.md): shared handler contract and runtime behavior across official templates
 - [20-infra/20-gcp-terraform.md](20-infra/20-gcp-terraform.md): GCP deployment contract
 - [20-infra/21-aws-terraform.md](20-infra/21-aws-terraform.md): AWS deployment contract
 - [30-integrations/30-config.md](30-integrations/30-config.md): `triage.yaml` schema and precedence
 - [30-integrations/31-llm.md](30-integrations/31-llm.md): optional LLM integration contract
-- [30-integrations/32-slack-jira.md](30-integrations/32-slack-jira.md): Slack and Discord notification contracts
+- [30-integrations/32-slack-jira.md](30-integrations/32-slack-jira.md): Slack, Discord, and Jira notification contracts
 - [40-governance/40-security-iam.md](40-governance/40-security-iam.md): canonical security and IAM policy
 - [90-open-questions.md](90-open-questions.md): open decision backlog
 
