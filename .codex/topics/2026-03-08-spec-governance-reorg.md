@@ -24,7 +24,7 @@ Date: 2026-03-08
 
 ## Open questions
 
-- OQ-101 through OQ-108 remain unresolved and must be settled in the canonical specs, not only in this note.
+- The open-question set must be tracked only in the canonical specs; consult `SPECS/chrisloarryn/90-open-questions.md` for the current unresolved items.
 
 ## Next documentation changes
 

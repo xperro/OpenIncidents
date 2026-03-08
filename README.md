@@ -1,72 +1,22 @@
+# OpenIncidents
 
-# Monitor Agent MVP
+OpenIncidents is in a documentation-first phase. The canonical source of truth for product and technical direction lives in [AGENTS.md](AGENTS.md) and in [SPECS/chrisloarryn/README.md](SPECS/chrisloarryn/README.md).
 
-AI-assisted incident analysis agent for microservices.
+## Current documented product shape
 
-The Monitor Agent reads recent logs from cloud providers (GCP or AWS), detects relevant errors,
-correlates them with source code in local repositories, generates hypotheses using an LLM,
-and posts a preliminary incident report to Slack.
+- `triage` is the CLI.
+- `triage-handler` is the runtime contract.
+- GCP and AWS are official deployment targets.
+- Go and Python are the official handler template runtimes.
+- Slack and Discord are primary notification channels, with optional Jira escalation.
+- OpenAI and Anthropic are the named optional LLM providers.
 
-This project is designed as an MVP executed locally before being automated in cloud infrastructure.
+## Read order
 
----
+1. [AGENTS.md](AGENTS.md)
+2. [SPECS/chrisloarryn/README.md](SPECS/chrisloarryn/README.md)
+3. [SPECS/chrisloarryn/00-product-overview.md](SPECS/chrisloarryn/00-product-overview.md)
+4. [SPECS/chrisloarryn/01-system-architecture.md](SPECS/chrisloarryn/01-system-architecture.md)
+5. subsystem specs under [SPECS/chrisloarryn](SPECS/chrisloarryn)
 
-## Goal
-
-Accelerate the initial diagnosis of incidents by combining:
-
-- Cloud logs
-- Source code context
-- AI analysis
-- Automated Slack reporting
-
----
-
-## MVP Scope
-
-Includes:
-
-- Manual CLI execution
-- Configurable log window (ex: last 10 minutes)
-- GCP Cloud Logging or AWS CloudWatch support
-- Error grouping
-- Source code context search
-- LLM-based analysis
-- Slack reporting
-
-Not included:
-
-- Cron automation
-- Infrastructure deployment
-- Auto-remediation
-- Ticket creation
-- Historical memory
-
----
-
-## Project Structure
-
-```text
-monitor-agent/
-├─ README.md
-├─ LEEME.md
-├─ pyproject.toml
-├─ config/
-│  └─ settings.yaml
-├─ src/
-│  └─ monitor_agent/
-│     ├─ main.py
-│     ├─ cli/
-│     ├─ core/
-│     ├─ providers/
-│     ├─ services/
-│     ├─ domain/
-│     └─ utils/
-└─ tests/
-```
-
----
-
-## Example Execution
-
-python -m monitor_agent.main run --service payments-orchestrator
+This root README is orientation only. It should not be used as a substitute for the canonical specs.

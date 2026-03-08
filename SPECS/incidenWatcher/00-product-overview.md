@@ -10,15 +10,17 @@ Define the product framing for OpenIncidents before implementation starts.
 
 - In scope for the MVP:
   - turn critical cloud logs into actionable incidents
-  - support both GCP and AWS deployment paths
-  - support Slack or Discord notifications
+  - support both GCP and AWS deployment paths as first-class product paths
+  - support CLI-driven infrastructure generation, plan, apply, and handler deployment
+  - support downloadable handler templates in Go and Python
+  - support Slack and Discord notifications plus Jira ticket creation
   - support optional LLM analysis using OpenAI or Anthropic
   - correlate incidents with context from linked source repositories
   - generate diagnostic output with candidate fixes for operator review
   - support a local development mode for validating the pipeline
 - Out of scope for this phase:
-  - product code, Terraform modules, generators, or runtime implementation
-  - auto-remediation or deploy actions
+  - product code, Terraform modules, template implementation, or automation
+  - auto-remediation or corrective actions beyond deployment itself
   - full raw log streaming into an LLM
   - vendor lock-in in the core domain model
 
@@ -36,14 +38,21 @@ Define the product framing for OpenIncidents before implementation starts.
   - CLI name: `triage`
   - runtime name: `triage-handler`
 - Delivery modes:
-  - CLI-driven cloud deployment remains the main operational path
+  - CLI-driven cloud deployment remains the main operational path on both GCP and AWS
   - local or development execution remains part of the MVP
+- Bootstrap contract:
+  - `triage` validates local credentials and required tooling before generation or deployment
+  - `triage` generates and applies Terraform as part of the official user journey
+  - `triage` downloads handler templates only to an explicit absolute destination path
+- Template contract:
+  - Go and Python are the two official handler template runtimes for the MVP
+  - the template target remains `triage-handler` regardless of implementation language
 - MVP capability contract:
   - ingest logs from cloud-native sources
   - filter and reduce incidents with error-first policy defaults
   - correlate reduced incidents with linked repository context
   - optionally request structured LLM analysis
-  - notify through Slack or Discord
+  - notify through Slack and Discord and optionally create Jira tickets
 
 ## Dependencies
 
@@ -54,22 +63,21 @@ Define the product framing for OpenIncidents before implementation starts.
 ## Locked decisions
 
 - The repository stays documentation-first until the specs are sufficiently closed.
-- OpenIncidents remains cloud-agnostic at the product level while documenting GCP and AWS equally.
-- GCP is the first implementation target; AWS remains available in the configuration and documentation model.
-- Slack, Discord, OpenAI, and Anthropic are the named MVP integrations in the current phase.
-- Notification routing is configurable to Slack, Discord, or both.
-- Python is the target implementation language for the first runtime delivery.
+- OpenIncidents remains cloud-agnostic at the product level while documenting GCP and AWS as equally official deployment targets.
+- Slack, Discord, Jira, OpenAI, and Anthropic are the named MVP integrations in the current phase.
+- Notification routing is configurable to Slack, Discord, or both, while Jira remains escalation-oriented.
+- `triage-handler` is the shared runtime contract name rather than a label for a single language implementation.
 - The product is planned as an open-source toolkit with clear boundaries between stable core contracts and pluggable edges.
 
 ## Open questions
 
+- See [OQ-104](90-open-questions.md#oq-104) for the MVP placement of dedupe and rate-limit state.
+- See [OQ-106](90-open-questions.md#oq-106) for the final Jira escalation policy relative to Slack and Discord.
 - See [OQ-107](90-open-questions.md#oq-107) for the point at which cloud secret stores become mandatory.
-- See [OQ-111](90-open-questions.md#oq-111) for Jira reintroduction policy after the Slack/Discord MVP baseline.
 
 ## Deferred items
 
-- Additional notifiers beyond Slack and Discord
-- Jira reintegration as a post-MVP notifier/escalation target
+- Additional notifiers beyond Slack, Discord, and Jira
 - Additional LLM providers beyond OpenAI and Anthropic
 - Auto-remediation workflows
 - Persistent storage and long-term incident history

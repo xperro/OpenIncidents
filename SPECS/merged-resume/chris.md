@@ -2,18 +2,19 @@
 
 ## What it is
 
-`SPECS/chrisloarryn/` is the main planning and architecture area for OpenIncidents. It already defines the product shape, the runtime model, the infrastructure targets, the integration contracts, and the unresolved design backlog.
+`SPECS/chrisloarryn/` is the canonical planning and architecture area for OpenIncidents. It defines the product shape, runtime contracts, infrastructure targets, integration contracts, and unresolved design backlog.
 
 ## Core idea
 
 OpenIncidents is documented as a toolkit that turns relevant cloud logs into actionable incidents. The current design centers on:
 
 - a CLI named `triage`
-- a Go runtime named `triage-handler`
-- optional LLM analysis
-- Slack notifications
+- a runtime contract named `triage-handler`
+- official support for GCP and AWS
+- official handler templates in Go and Python
+- Slack and Discord notifications
 - optional Jira ticket creation
-- support for both GCP and AWS
+- optional LLM analysis
 
 ## Current structure
 
@@ -23,7 +24,7 @@ The directory is intentionally organized by responsibility:
 - `01-system-architecture.md`: end-to-end flow and stable domain contracts
 - `10-runtime/`: CLI and handler behavior
 - `20-infra/`: GCP and AWS Terraform contracts
-- `30-integrations/`: config, LLM, Slack, and Jira contracts
+- `30-integrations/`: config, LLM, and notification contracts
 - `40-governance/`: security and IAM baseline
 - `90-open-questions.md`: unresolved product and design decisions
 
@@ -34,33 +35,30 @@ The directory is intentionally organized by responsibility:
 - `triage` is the CLI name.
 - `triage-handler` is the runtime name.
 - The pipeline reduces events before any LLM step.
-- The design stays cloud-agnostic at the product level, while documenting GCP and AWS explicitly.
-- Slack, Jira, OpenAI, and Anthropic are the named MVP integrations.
+- GCP and AWS are equally official deployment targets in the current documentation.
+- `triage` owns template download plus Terraform generation, plan, and apply in the documented user journey.
+- Slack, Discord, Jira, OpenAI, and Anthropic are the named MVP integrations.
 
 ## Runtime and operating model
 
 The documented runtime flow is:
 
-1. ingest a log event
+1. ingest a log event from GCP, AWS, or local replay
 2. normalize it
 3. fingerprint and reduce it into an incident
 4. evaluate policy
 5. optionally call an LLM
-6. notify through Slack and optionally Jira
+6. notify through Slack and Discord and optionally create Jira tickets
 
-The CLI is expected to initialize projects, generate infrastructure files, optionally run Terraform helpers, and run the handler locally for development.
+The CLI is expected to initialize projects, download templates, generate infrastructure files, run Terraform helpers, package and deploy handlers, and run the handler locally for development.
 
 ## Current maturity
 
-This area is conceptually strong and already decomposed into component-level contracts. Its main remaining gaps are not missing structure, but unresolved decisions captured in `90-open-questions.md`.
+This area is conceptually strong and already decomposed into component-level contracts. Its main remaining gaps are no longer cloud-path selection or packaging defaults; they are the unresolved policy and hardening decisions kept in `90-open-questions.md`.
 
 ## Main open decisions still pending
 
-- whether GCP should be the first actual implementation target if scope narrows
-- whether GCP should default to Pub/Sub push or a pull-worker model
-- whether AWS should default to zip or container packaging
 - where dedupe and rate-limit state should live during the MVP
 - the exact redaction baseline before sending data to an LLM
-- the threshold for creating Jira tickets instead of sending Slack only
-- when secret stores become mandatory
-- whether `triage` should own `terraform plan/apply` or just generate files
+- the threshold for creating Jira tickets instead of using Slack and Discord only
+- when cloud secret stores become mandatory

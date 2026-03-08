@@ -1,72 +1,22 @@
+# OpenIncidents
 
-# Monitor Agent MVP
+OpenIncidents esta en una fase documentation-first. La fuente de verdad para direccion de producto y tecnica vive en [AGENTS.md](AGENTS.md) y en [SPECS/chrisloarryn/README.md](SPECS/chrisloarryn/README.md).
 
-Agente de análisis de incidentes para microservicios asistido por IA.
+## Forma actual del producto documentado
 
-El Monitor Agent lee logs recientes desde proveedores cloud (GCP o AWS),
-detecta errores relevantes, los relaciona con el código fuente del repositorio,
-genera hipótesis mediante un modelo LLM y publica un reporte preliminar en Slack.
+- `triage` es el CLI.
+- `triage-handler` es el contrato del runtime.
+- GCP y AWS son targets oficiales de despliegue.
+- Go y Python son los runtimes oficiales de template para el handler.
+- Slack y Discord son los canales primarios de notificacion, con escalamiento opcional a Jira.
+- OpenAI y Anthropic son los proveedores LLM opcionales nombrados.
 
-Este proyecto está diseñado como MVP ejecutado localmente antes de automatizar
-su despliegue en infraestructura cloud.
+## Orden de lectura
 
----
+1. [AGENTS.md](AGENTS.md)
+2. [SPECS/chrisloarryn/README.md](SPECS/chrisloarryn/README.md)
+3. [SPECS/chrisloarryn/00-product-overview.md](SPECS/chrisloarryn/00-product-overview.md)
+4. [SPECS/chrisloarryn/01-system-architecture.md](SPECS/chrisloarryn/01-system-architecture.md)
+5. los subsistemas bajo [SPECS/chrisloarryn](SPECS/chrisloarryn)
 
-## Objetivo
-
-Acelerar el diagnóstico inicial de incidentes combinando:
-
-- logs cloud
-- contexto del código fuente
-- análisis con IA
-- reporte automático en Slack
-
----
-
-## Alcance del MVP
-
-Incluye:
-
-- ejecución manual por CLI
-- ventana configurable de logs
-- soporte para GCP o AWS
-- agrupación de errores
-- búsqueda de contexto en repositorios
-- análisis con LLM
-- reporte en Slack
-
-No incluye:
-
-- cron o scheduler
-- despliegue cloud
-- auto-remediación
-- creación de tickets
-- memoria histórica
-
----
-
-## Estructura del Proyecto
-
-```text
-monitor-agent/
-├─ README.md
-├─ LEEME.md
-├─ pyproject.toml
-├─ config/
-│  └─ settings.yaml
-├─ src/
-│  └─ monitor_agent/
-│     ├─ main.py
-│     ├─ cli/
-│     ├─ core/
-│     ├─ providers/
-│     ├─ services/
-│     ├─ domain/
-│     └─ utils/
-└─ tests/
-```
----
-
-## Ejecución
-
-python -m monitor_agent.main run --service payments-orchestrator
+Este LEEME es solo orientacion y no reemplaza las specs canonicas.

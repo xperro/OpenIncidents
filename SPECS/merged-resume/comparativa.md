@@ -13,9 +13,9 @@
 | Maturity | High for planning/documentation | Very early / placeholder |
 | Naming | Canonical names are documented and stable | No naming contract |
 | Scope boundaries | Explicit MVP, non-goals, deferred items, open questions | None |
-| Runtime model | Defined CLI and handler roles | None |
-| Infra model | GCP and AWS contracts documented | None |
-| Integrations | Config, LLM, Slack, Jira documented | None |
+| Runtime model | Defined CLI, shared handler contract, and Go/Python template roles | None |
+| Infra model | GCP and AWS contracts documented, including CLI-driven Terraform workflow | None |
+| Integrations | Config, LLM, Slack, Discord, and Jira documented | None |
 | Governance | Security and IAM documented | None |
 | Decision tracking | Open question backlog with defaults | None |
 
