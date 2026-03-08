@@ -11,6 +11,6 @@ Use this directory for one Markdown file per chat or work topic.
 ## Required structure
 
 - Start from [`TEMPLATE.md`](TEMPLATE.md).
-- Link related specs from `SPECS/incidenWatcher/`.
+- Link related specs from `SPECS/triage/`.
 - List the `AGENTS.md` constraints that shaped the note.
 - If a note conflicts with `AGENTS.md`, the note is invalid until reconciled.

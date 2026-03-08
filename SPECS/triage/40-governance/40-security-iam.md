@@ -1,6 +1,5 @@
 # Governance Specification: Security and IAM
 Date: 2026-03-08
-Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 

@@ -1,6 +1,5 @@
 # Infrastructure Specification: AWS Terraform
 Date: 2026-03-08
-Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 

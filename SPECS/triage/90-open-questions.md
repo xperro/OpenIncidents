@@ -1,6 +1,5 @@
 # OpenIncidents Open Questions
 Date: 2026-03-08
-Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 This file is the canonical backlog for unresolved product and design decisions.
 

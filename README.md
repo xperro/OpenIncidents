@@ -1,6 +1,6 @@
 # OpenIncidents
 
-OpenIncidents is in a documentation-first phase. The canonical source of truth for product and technical direction lives in [AGENTS.md](AGENTS.md) and in [SPECS/incidenWatcher/README.md](SPECS/incidenWatcher/README.md).
+OpenIncidents is in a documentation-first phase. The canonical source of truth for product and technical direction lives in [AGENTS.md](AGENTS.md) and in [SPECS/triage/README.md](SPECS/triage/README.md).
 
 ## Current documented product shape
 
@@ -14,9 +14,9 @@ OpenIncidents is in a documentation-first phase. The canonical source of truth f
 ## Read order
 
 1. [AGENTS.md](AGENTS.md)
-2. [SPECS/incidenWatcher/README.md](SPECS/incidenWatcher/README.md)
-3. [SPECS/incidenWatcher/00-product-overview.md](SPECS/incidenWatcher/00-product-overview.md)
-4. [SPECS/incidenWatcher/01-system-architecture.md](SPECS/incidenWatcher/01-system-architecture.md)
-5. subsystem specs under [SPECS/incidenWatcher](SPECS/incidenWatcher)
+2. [SPECS/triage/README.md](SPECS/triage/README.md)
+3. [SPECS/triage/00-product-overview.md](SPECS/triage/00-product-overview.md)
+4. [SPECS/triage/01-system-architecture.md](SPECS/triage/01-system-architecture.md)
+5. subsystem specs under [SPECS/triage](SPECS/triage)
 
 This root README is orientation only. It should not be used as a substitute for the canonical specs.

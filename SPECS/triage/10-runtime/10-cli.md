@@ -1,6 +1,5 @@
 # CLI Specification: `triage`
 Date: 2026-03-08
-Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
@@ -30,10 +29,16 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 - Run the handler locally against supported development sources.
 - Validate linked repository paths and required local configuration before runtime execution.
 - Print clear next steps after generation or infrastructure actions.
+- Define the official implementation target for the CLI itself.
 
 ## Contracts
 
 - Binary name: `triage`
+- Implementation target:
+  - the official CLI implementation is Python
+  - the CLI uses only Python standard-library modules
+  - `argparse` is the required baseline for command wiring, help output, and subcommand structure
+  - filesystem, subprocess, environment, HTTP/JSON, and packaging helpers must use the Python standard library unless a future spec explicitly revises that rule
 - Command surface:
   - `triage init`
   - `triage template download`
@@ -85,6 +90,8 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 - `infra generate`, `infra plan`, and `infra apply` remain part of the official CLI workflow rather than convenience-only wrappers.
 - `template download` requires an explicit absolute output path and never defaults to a relative destination.
 - `triage` supports both GCP and AWS plus official Go and Python handler templates in the MVP documentation.
+- The official implementation of `triage` is Python using only the standard library.
+- `argparse` is the baseline command framework for the documented CLI path.
 - Generated outputs must be deterministic and idempotent from the same inputs.
 - The CLI keeps both generation and local-run responsibilities in scope for the MVP documentation.
 

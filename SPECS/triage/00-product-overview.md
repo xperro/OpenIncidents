@@ -1,6 +1,5 @@
 # OpenIncidents Product Overview
 Date: 2026-03-08
-Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
@@ -13,6 +12,7 @@ Define the product framing for OpenIncidents before implementation starts.
   - support both GCP and AWS deployment paths as first-class product paths
   - support CLI-driven infrastructure generation, plan, apply, and handler deployment
   - support downloadable handler templates in Go and Python
+  - support Python as the official implementation language for the `triage` CLI using only the standard library
   - support Slack and Discord notifications plus Jira ticket creation
   - support optional LLM analysis using OpenAI or Anthropic
   - correlate incidents with context from linked source repositories
@@ -45,8 +45,12 @@ Define the product framing for OpenIncidents before implementation starts.
   - `triage` generates and applies Terraform as part of the official user journey
   - `triage` downloads handler templates only to an explicit absolute destination path
 - Template contract:
-  - Go and Python are the two official handler template runtimes for the MVP
+  - Go and Python are the two official handler implementation runtimes for the MVP
   - the template target remains `triage-handler` regardless of implementation language
+- CLI implementation contract:
+  - the official implementation target for `triage` is Python
+  - the CLI uses Python standard-library modules only
+  - `argparse` is the baseline for command parsing, help, and subcommand structure
 - MVP capability contract:
   - ingest logs from cloud-native sources
   - filter and reduce incidents with error-first policy defaults
@@ -67,6 +71,8 @@ Define the product framing for OpenIncidents before implementation starts.
 - Slack, Discord, Jira, OpenAI, and Anthropic are the named MVP integrations in the current phase.
 - Notification routing is configurable to Slack, Discord, or both, while Jira remains escalation-oriented.
 - `triage-handler` is the shared runtime contract name rather than a label for a single language implementation.
+- `triage` has one official CLI implementation target in Python using only the standard library.
+- Go and Python remain the two official handler/runtime implementation paths.
 - The product is planned as an open-source toolkit with clear boundaries between stable core contracts and pluggable edges.
 
 ## Open questions

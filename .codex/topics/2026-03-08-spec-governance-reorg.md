@@ -4,10 +4,10 @@ Date: 2026-03-08
 
 ## Related specs
 
-- [OpenIncidents Specification Index](../../SPECS/incidenWatcher/README.md)
-- [OpenIncidents Product Overview](../../SPECS/incidenWatcher/00-product-overview.md)
-- [OpenIncidents System Architecture](../../SPECS/incidenWatcher/01-system-architecture.md)
-- [OpenIncidents Open Questions](../../SPECS/incidenWatcher/90-open-questions.md)
+- [Triage Specification Index](../../SPECS/triage/README.md)
+- [OpenIncidents Product Overview](../../SPECS/triage/00-product-overview.md)
+- [OpenIncidents System Architecture](../../SPECS/triage/01-system-architecture.md)
+- [OpenIncidents Open Questions](../../SPECS/triage/90-open-questions.md)
 
 ## AGENTS constraints
 
@@ -17,14 +17,14 @@ Date: 2026-03-08
 
 ## Decisions
 
-- Reorganized `SPECS/incidenWatcher/` into root guidance plus subsystem subfolders.
+- Reorganized the canonical spec set under `SPECS/triage/`.
 - Locked the canonical names `OpenIncidents`, `triage`, and `triage-handler`.
 - Established `90-open-questions.md` as the only canonical backlog for unresolved design decisions.
 - Created `.codex/topics/` as the working layer for one note per chat or work topic.
 
 ## Open questions
 
-- The open-question set must be tracked only in the canonical specs; consult `SPECS/incidenWatcher/90-open-questions.md` for the current unresolved items.
+- The open-question set must be tracked only in the canonical specs; consult `SPECS/triage/90-open-questions.md` for the current unresolved items.
 
 ## Next documentation changes
 

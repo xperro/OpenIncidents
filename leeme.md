@@ -1,6 +1,6 @@
 # OpenIncidents
 
-OpenIncidents esta en una fase documentation-first. La fuente de verdad para direccion de producto y tecnica vive en [AGENTS.md](AGENTS.md) y en [SPECS/incidenWatcher/README.md](SPECS/incidenWatcher/README.md).
+OpenIncidents esta en una fase documentation-first. La fuente de verdad para direccion de producto y tecnica vive en [AGENTS.md](AGENTS.md) y en [SPECS/triage/README.md](SPECS/triage/README.md).
 
 ## Forma actual del producto documentado
 
@@ -14,9 +14,9 @@ OpenIncidents esta en una fase documentation-first. La fuente de verdad para dir
 ## Orden de lectura
 
 1. [AGENTS.md](AGENTS.md)
-2. [SPECS/incidenWatcher/README.md](SPECS/incidenWatcher/README.md)
-3. [SPECS/incidenWatcher/00-product-overview.md](SPECS/incidenWatcher/00-product-overview.md)
-4. [SPECS/incidenWatcher/01-system-architecture.md](SPECS/incidenWatcher/01-system-architecture.md)
-5. los subsistemas bajo [SPECS/incidenWatcher](SPECS/incidenWatcher)
+2. [SPECS/triage/README.md](SPECS/triage/README.md)
+3. [SPECS/triage/00-product-overview.md](SPECS/triage/00-product-overview.md)
+4. [SPECS/triage/01-system-architecture.md](SPECS/triage/01-system-architecture.md)
+5. los subsistemas bajo [SPECS/triage](SPECS/triage)
 
 Este LEEME es solo orientacion y no reemplaza las specs canonicas.

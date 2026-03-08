@@ -1,7 +1,6 @@
-# OpenIncidents Specification Index
-Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
+# Triage Specification Index
 
-This directory is the canonical planning workspace for OpenIncidents.
+This directory is the canonical planning workspace for the `triage` specification set in OpenIncidents.
 
 ## Naming
 
@@ -16,7 +15,8 @@ This directory is the canonical planning workspace for OpenIncidents.
 2. [00-product-overview.md](00-product-overview.md)
 3. [01-system-architecture.md](01-system-architecture.md)
 4. Subsystem documents in `10-runtime/`, `20-infra/`, `30-integrations/`, and `40-governance/`
-5. [90-open-questions.md](90-open-questions.md) for unresolved decisions and current defaults
+5. Language-specific handler detail in [triage-handler-go/README.md](triage-handler-go/README.md) and [triage-handler-python/README.md](triage-handler-python/README.md)
+6. [90-open-questions.md](90-open-questions.md) for unresolved decisions and current defaults
 
 ## Layout
 
@@ -24,6 +24,8 @@ This directory is the canonical planning workspace for OpenIncidents.
 - [01-system-architecture.md](01-system-architecture.md): cross-component flow and stable domain contracts
 - [10-runtime/10-cli.md](10-runtime/10-cli.md): CLI responsibilities, template handling, and deployment workflow
 - [10-runtime/11-handler.md](10-runtime/11-handler.md): shared handler contract and runtime behavior across official templates
+- [triage-handler-go/README.md](triage-handler-go/README.md): Go-specific handler implementation detail for `triage-handler`
+- [triage-handler-python/README.md](triage-handler-python/README.md): Python-specific handler implementation detail for `triage-handler`
 - [20-infra/20-gcp-terraform.md](20-infra/20-gcp-terraform.md): GCP deployment contract
 - [20-infra/21-aws-terraform.md](20-infra/21-aws-terraform.md): AWS deployment contract
 - [30-integrations/30-config.md](30-integrations/30-config.md): `triage.yaml` schema and precedence

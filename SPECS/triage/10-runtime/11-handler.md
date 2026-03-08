@@ -1,6 +1,5 @@
 # Runtime Specification: `triage-handler`
 Date: 2026-03-08
-Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
@@ -35,6 +34,12 @@ Define the shared runtime behavior of `triage-handler` across the official Go an
 - Official template runtimes:
   - Go
   - Python
+- Language-specific implementation detail:
+  - Go-specific handler design lives in [../triage-handler-go/README.md](../triage-handler-go/README.md)
+  - Python-specific handler design lives in [../triage-handler-python/README.md](../triage-handler-python/README.md)
+- CLI language independence:
+  - the language chosen for `triage` does not constrain the handler implementation language
+  - Go and Python remain valid handler implementations regardless of the CLI implementation being Python
 - Supported ingress paths:
   - GCP Pub/Sub push delivery to an HTTP endpoint on Cloud Run
   - AWS CloudWatch Logs subscription delivery to a Lambda handler
@@ -69,6 +74,7 @@ Define the shared runtime behavior of `triage-handler` across the official Go an
 
 - `triage-handler` remains the runtime name.
 - The runtime contract is language-agnostic even though official templates are provided in Go and Python.
+- Shared runtime behavior stays in this document; language-specific implementation detail belongs in `triage-handler-go/` and `triage-handler-python/`.
 - GCP traffic reaches the runtime through Pub/Sub push on Cloud Run.
 - AWS traffic reaches the runtime through CloudWatch Logs subscription delivery on Lambda.
 - Reduction always happens before optional LLM analysis.
