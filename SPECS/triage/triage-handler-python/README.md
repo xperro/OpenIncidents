@@ -58,8 +58,8 @@ Describe the Python-specific implementation shape of `triage-handler` as a serve
 
 ## Open questions
 
-- See [../90-open-questions.md#oq-104](../90-open-questions.md#oq-104) for dedupe and rate-limit state placement.
-- See [../90-open-questions.md#oq-106](../90-open-questions.md#oq-106) for Jira escalation thresholds.
+- See [../90-open-questions.md#oq-104](../90-open-questions.md#oq-104) for when durable shared state should replace the MVP per-instance default.
+- See [../90-open-questions.md#oq-106](../90-open-questions.md#oq-106) for whether Jira escalation should expand beyond the baseline severity threshold.
 
 ## Deferred items
 

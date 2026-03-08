@@ -46,6 +46,7 @@ repos:
 
 policy:
   severity_min: DEBUG|INFO|NOTICE|WARNING|ERROR|CRITICAL|ALERT|EMERGENCY
+  jira_min_severity: CRITICAL
   window_seconds: 300
   dedupe: true
   max_llm_tokens: 2000
@@ -109,6 +110,7 @@ integrations:
   - exactly one cloud path is active per deployment because `cloud` selects either `gcp` or `aws`
   - the selected cloud block must be complete for `infra generate`, `infra plan`, and `infra apply`
   - `policy.severity_min` follows the normalized GCP severity scale documented in the official [Google Cloud LogSeverity reference](https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.type#logseverity)
+  - `policy.jira_min_severity` follows the same normalized severity scale and defaults to `CRITICAL`
   - when `cloud: aws`, `log_format` must be one of `json`, `space_delimited`, or `text`
   - `severity_field` is required when AWS `log_format` is `json`
   - `severity_word_position` is required when AWS `log_format` is `space_delimited`
@@ -138,6 +140,7 @@ integrations:
 - `triage.yaml` is the shared configuration entrypoint.
 - `triage.yaml` does not replace the per-user CLI state file.
 - Policy defaults include a 300-second aggregation window and dedupe enabled.
+- Policy defaults include `jira_min_severity: CRITICAL`.
 - The shared severity threshold uses the normalized `DEBUG` through `EMERGENCY` scale.
 - CLI overrides remain limited to selected operational fields rather than replacing the full config model.
 - Secret values are referenced through environment variable names, not embedded directly in the file.
@@ -145,12 +148,13 @@ integrations:
 - Repository integration uses Git URL + credentials, with optional local cache paths for efficiency.
 - Notification routing is explicit through `integrations.routing` with support for `slack`, `discord`, or `both`.
 - Jira remains separately configurable as an escalation target rather than a chat-routing destination.
+- MVP dedupe and rate limits are best-effort per warm runtime instance rather than globally coordinated across instances.
 
 ## Open questions
 
-- See [OQ-104](../90-open-questions.md#oq-104) for the final location of dedupe and rate-limit state.
+- See [OQ-104](../90-open-questions.md#oq-104) for when durable shared state should replace the MVP per-instance default.
 - See [OQ-107](../90-open-questions.md#oq-107) for when secret-store references should replace the current MVP expectation for local CLI token storage and runtime environment wiring.
-- See [OQ-106](../90-open-questions.md#oq-106) for the policy fields that should decide when Jira tickets are created.
+- See [OQ-106](../90-open-questions.md#oq-106) for when Jira escalation should expand beyond the baseline severity threshold.
 
 ## Deferred items
 

@@ -23,6 +23,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 
 - Scaffold the working structure for an OpenIncidents deployment.
 - Bootstrap the local CLI before operational commands are allowed.
+- Define the cross-platform distribution and installation shape of the CLI.
 - Download official handler templates for the selected cloud and runtime.
 - Generate deterministic config and Terraform inputs.
 - Validate that required local credentials already exist.
@@ -57,6 +58,11 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 - Shared selection flags:
   - `--cloud gcp|aws`
   - `--runtime go|python`
+- Distribution contract:
+  - the canonical release bundle contains `triage.pyz`, a Unix launcher named `triage`, and a Windows launcher named `triage.cmd`
+  - the preferred invocation on macOS and Linux is `triage <command>` when the launcher and `triage.pyz` are on `PATH`
+  - the preferred invocation on Windows is `triage <command>` through `triage.cmd`, with `py triage.pyz <command>` as the fallback form
+  - the CLI must remain runnable without `pip`, `pipx`, or third-party package managers
 - Init contract:
   - `triage init` is interactive and is the required bootstrap entrypoint for the CLI
   - `triage init` asks which cloud to validate now: `gcp`, `aws`, or both
@@ -76,6 +82,8 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `--output` is mandatory and must be an absolute path
   - if `--output` points to an existing non-empty directory, the command fails unless `--force` is supplied
   - templates are versioned with the CLI release and extracted locally rather than fetched ad hoc
+  - the downloaded Go template root must include `README.md`, `.env.example`, `cmd/service/`, `cmd/local/`, `internal/`, and `sample-events/`
+  - the downloaded Python template root must include `README.md`, `.env.example`, `main.py`, `adapters/`, `notifiers/`, and `sample-events/`
 - Infrastructure apply contract:
   - `triage infra apply --cloud gcp|aws --runtime go|python --handler-path /abs/path`
   - `--handler-path` is required when packaging or building the receiver service for deployment
@@ -96,6 +104,24 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - cloud-specific Terraform inputs
   - receiver service deployment artifacts or references required by the chosen cloud
   - a predictable project scaffold for later implementation work
+- Scaffold contract:
+  - `triage init` creates this baseline in the current working directory:
+
+```text
+.
+├── triage.yaml
+├── .env.example
+├── .gitignore
+└── .triage/
+    ├── infra/
+    ├── build/
+    └── cache/
+        └── repos/
+```
+
+  - `.triage/infra/<cloud>/` is populated by `triage infra generate`
+  - `.triage/build/<cloud>/<runtime>/` is populated by `triage infra apply`
+  - `.triage/cache/repos/` is created lazily when local repo enrichment or local runtime flows need repository checkout/cache state
 - Local run prerequisites:
   - `.env` may be used for local development secrets and must stay untracked
   - configured repository Git URLs and credential env vars must be resolvable for context enrichment
@@ -127,11 +153,11 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 
 ## Open questions
 
-- See [OQ-104](../90-open-questions.md#oq-104) for the final placement of dedupe and rate-limit state because it affects local parity expectations.
+- See [OQ-104](../90-open-questions.md#oq-104) for when the MVP should move from per-instance in-memory dedupe and rate limits to durable shared state.
 - See [OQ-107](../90-open-questions.md#oq-107) for when secret-store references should replace the documented local token storage and environment-variable path.
 
 ## Deferred items
 
 - Richer interactive UX and guided setup
-- Additional scaffolds beyond the initial OpenIncidents layout
+- Additional scaffolds beyond the initial documented OpenIncidents layout
 - Non-Terraform deployment backends

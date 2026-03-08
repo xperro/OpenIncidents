@@ -54,7 +54,10 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
   - severity filter: `ERROR` and `CRITICAL` by default
   - aggregation window: 300 seconds
   - dedupe: one analysis per fingerprint per window
+  - dedupe and rate-limit state live in memory within a single warm runtime instance for the MVP
+  - cross-instance dedupe is not guaranteed on Cloud Run or Lambda in the MVP
   - stacktrace or payload truncation before notification and LLM submission
+  - Jira ticket creation begins at severity `CRITICAL` when Jira is enabled
 - Integration handoff contract:
   - runtime produces incident data with summary, severity, service, env, counts, links, and optional LLM output
   - Slack, Discord, and Jira formatting rules live in [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
@@ -64,6 +67,41 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
   - apply severity thresholds before notification and ticket creation
   - ship notifier clients for Slack, Discord, and Jira
   - expose a basic local development mode for replaying payloads
+- Example source envelopes:
+
+```json
+{
+  "message": {
+    "data": "<base64-encoded Cloud Logging export payload>",
+    "messageId": "1"
+  },
+  "subscription": "projects/example/subscriptions/triage-prod-push"
+}
+```
+
+```json
+{
+  "awslogs": {
+    "data": "<base64-gzip CloudWatch Logs payload>"
+  }
+}
+```
+
+- Example normalized event:
+
+```json
+{
+  "cloud": "gcp",
+  "source": "cloud_logging",
+  "service": "payments-api",
+  "env": "prod",
+  "severity": "ERROR",
+  "timestamp": "2026-03-08T12:34:56Z",
+  "summary": "Unhandled exception in checkout flow",
+  "raw_excerpt": "ValueError: invalid order state",
+  "source_link": "https://console.cloud.google.com/logs/query"
+}
+```
 - Runtime configuration is driven by [../30-integrations/30-config.md](../30-integrations/30-config.md), local `.env` for development, plus environment variables required by integrations
 
 ## Dependencies
@@ -85,13 +123,14 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
 - GCP traffic reaches the runtime through Pub/Sub push on Cloud Run.
 - AWS traffic reaches the runtime through CloudWatch Logs subscription delivery on Lambda.
 - Reduction always happens before optional LLM analysis.
+- The MVP uses per-instance in-memory dedupe and rate-limit state rather than a shared durable store.
 - Linked repository access uses config-declared Git URLs with credential references from environment variables.
 - Runtime logs must include request correlation and incident fingerprint data.
 
 ## Open questions
 
-- See [OQ-104](../90-open-questions.md#oq-104) for state placement of dedupe and rate limits.
-- See [OQ-106](../90-open-questions.md#oq-106) for Jira escalation thresholds relative to Slack and Discord.
+- See [OQ-104](../90-open-questions.md#oq-104) for when durable shared state should replace the MVP per-instance default.
+- See [OQ-106](../90-open-questions.md#oq-106) for when Jira escalation should expand beyond the baseline severity policy.
 
 ## Deferred items
 

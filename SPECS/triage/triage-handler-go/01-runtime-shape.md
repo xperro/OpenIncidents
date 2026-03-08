@@ -64,7 +64,7 @@ Describe how the Go implementation of `triage-handler` should be structured inte
 
 ## Open questions
 
-- See [../90-open-questions.md#oq-104](../90-open-questions.md#oq-104) for durable dedupe state.
+- See [../90-open-questions.md#oq-104](../90-open-questions.md#oq-104) for when durable shared state should replace the MVP per-instance default.
 
 ## Deferred items
 

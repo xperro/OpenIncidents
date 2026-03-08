@@ -60,7 +60,7 @@ Describe how the Go implementation of `triage-handler` as a receiver service sho
 
 ## Open questions
 
-- See [../90-open-questions.md#oq-106](../90-open-questions.md#oq-106) for the exact Jira escalation policy.
+- See [../90-open-questions.md#oq-106](../90-open-questions.md#oq-106) for whether Jira escalation should expand beyond the baseline severity threshold.
 
 ## Deferred items
 

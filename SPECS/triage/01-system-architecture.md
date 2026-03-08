@@ -67,12 +67,14 @@ Describe the end-to-end system flow and the stable domain contracts that subsyst
 - GCP uses Pub/Sub push into Cloud Run as the canonical delivery model.
 - AWS uses CloudWatch Logs subscription into Lambda as the canonical delivery model.
 - `triage-handler` is the serverless receiver service that terminates pushed log events before normalization and reduction.
+- Dedupe and rate limits are best-effort and instance-local in the MVP serverless paths.
+- Jira escalation begins at severity `CRITICAL` in the MVP baseline.
 - Observability at runtime must preserve request identifiers and incident fingerprints.
 
 ## Open questions
 
-- See [OQ-104](90-open-questions.md#oq-104) for dedupe and rate-limit state storage.
-- See [OQ-106](90-open-questions.md#oq-106) for Jira escalation thresholds relative to Slack and Discord.
+- See [OQ-104](90-open-questions.md#oq-104) for when durable shared state should replace the MVP per-instance default.
+- See [OQ-106](90-open-questions.md#oq-106) for whether Jira escalation should expand beyond the baseline severity policy.
 
 ## Deferred items
 

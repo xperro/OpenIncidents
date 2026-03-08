@@ -47,6 +47,12 @@ Define the notification and ticketing contracts that turn reduced incidents into
   - Slack, Discord, and Jira are individually configurable
   - Slack and Discord are the baseline outbound notification channels in the current design
   - Jira remains escalation-oriented rather than mandatory for every incident
+- Jira creation policy:
+  - a Jira ticket is created only when `integrations.jira.enabled` is `true`
+  - a Jira ticket is created only when the reduced incident severity is greater than or equal to `policy.jira_min_severity`
+  - the documented MVP default for `policy.jira_min_severity` is `CRITICAL`
+  - chat notifications to Slack and Discord still happen when their routing is enabled, even if a Jira ticket is also created
+  - the runtime creates at most one Jira ticket per fingerprint within the current aggregation window
 
 ## Dependencies
 
@@ -62,12 +68,13 @@ Define the notification and ticketing contracts that turn reduced incidents into
 - Slack, Discord, and Jira are the named notification integrations in the current MVP documentation.
 - Slack and Discord are the primary notification surfaces for actionable incidents.
 - Jira ticket content must be derived from reduced incident context rather than raw unbounded logs.
+- Jira escalation starts from severity `CRITICAL` in the documented MVP baseline.
 - Notification structure is cloud-agnostic and should not branch by provider in this document.
 
 ## Open questions
 
 - See [OQ-107](../90-open-questions.md#oq-107) for when cloud secret stores become the required deployment path.
-- See [OQ-106](../90-open-questions.md#oq-106) for the exact Jira ticket-creation threshold relative to Slack and Discord notifications.
+- See [OQ-106](../90-open-questions.md#oq-106) for whether Jira escalation should expand beyond the baseline severity-only threshold.
 
 ## Deferred items
 

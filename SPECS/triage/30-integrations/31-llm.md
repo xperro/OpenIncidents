@@ -44,7 +44,10 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
   - `confidence`
   - `safe_to_escalate`
 - Safety constraints:
-  - redact sensitive patterns before provider submission
+  - redact email addresses before provider submission
+  - redact `Authorization`, `Proxy-Authorization`, `Cookie`, and `Set-Cookie` header values before provider submission
+  - redact obvious credential-bearing key/value pairs that use names such as `token`, `secret`, `password`, `api_key`, `access_key`, or `secret_key`
+  - truncate stack traces and payload excerpts to at most 8000 characters before provider submission
   - cap payload size before sending any incident context
   - do not persist provider payloads by default in the MVP
 
@@ -68,7 +71,7 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
 
 ## Open questions
 
-- See [OQ-105](../90-open-questions.md#oq-105) for the exact mandatory redaction baseline.
+- See [OQ-105](../90-open-questions.md#oq-105) for whether the mandatory redaction baseline should expand beyond the documented MVP set.
 - See [OQ-107](../90-open-questions.md#oq-107) for the secret-management threshold before production use and for replacing the documented local token store.
 
 ## Deferred items

@@ -46,6 +46,11 @@ Define the canonical security posture and IAM baseline for OpenIncidents across 
   - the local CLI state file must live outside the repo and use best-effort restrictive filesystem permissions
   - Secret Manager and Secrets Manager become the preferred hardening path before production use
   - no documentation may silently imply that raw secrets belong in `triage.yaml`
+- Mandatory LLM redaction baseline:
+  - redact email addresses
+  - redact `Authorization`, `Proxy-Authorization`, `Cookie`, and `Set-Cookie` values
+  - redact obvious credential-bearing key/value pairs such as `token`, `secret`, `password`, `api_key`, `access_key`, and `secret_key`
+  - truncate stack traces and payload excerpts to at most 8000 characters before provider submission
 
 ## Dependencies
 
@@ -68,7 +73,7 @@ Define the canonical security posture and IAM baseline for OpenIncidents across 
 
 ## Open questions
 
-- See [OQ-105](../90-open-questions.md#oq-105) for the exact mandatory redaction baseline.
+- See [OQ-105](../90-open-questions.md#oq-105) for whether the mandatory redaction baseline should expand beyond the documented MVP set.
 - See [OQ-107](../90-open-questions.md#oq-107) for the threshold at which cloud secret stores or OS-native secret storage become mandatory.
 
 ## Deferred items

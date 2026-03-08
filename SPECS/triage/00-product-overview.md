@@ -79,8 +79,8 @@ Define the product framing for OpenIncidents before implementation starts.
 
 ## Open questions
 
-- See [OQ-104](90-open-questions.md#oq-104) for the MVP placement of dedupe and rate-limit state.
-- See [OQ-106](90-open-questions.md#oq-106) for the final Jira escalation policy relative to Slack and Discord.
+- See [OQ-104](90-open-questions.md#oq-104) for when the product should move from MVP per-instance dedupe to durable shared state.
+- See [OQ-106](90-open-questions.md#oq-106) for whether Jira escalation should expand beyond the baseline severity threshold.
 - See [OQ-107](90-open-questions.md#oq-107) for the point at which cloud secret stores become mandatory.
 
 ## Deferred items
