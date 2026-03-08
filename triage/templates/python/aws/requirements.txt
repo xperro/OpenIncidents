@@ -1,1 +1,1 @@
-# Standard-library-only placeholder template.
+# Standard-library-only placeholder template for Python 3.14.3.
