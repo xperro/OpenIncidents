@@ -1,5 +1,6 @@
 # OpenIncidents Product Overview
 Date: 2026-03-08
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
@@ -10,8 +11,10 @@ Define the product framing for OpenIncidents before implementation starts.
 - In scope for the MVP:
   - turn critical cloud logs into actionable incidents
   - support both GCP and AWS deployment paths
-  - support Slack notifications and Jira ticket creation
+  - support Slack or Discord notifications
   - support optional LLM analysis using OpenAI or Anthropic
+  - correlate incidents with context from linked source repositories
+  - generate diagnostic output with candidate fixes for operator review
   - support a local development mode for validating the pipeline
 - Out of scope for this phase:
   - product code, Terraform modules, generators, or runtime implementation
@@ -37,9 +40,10 @@ Define the product framing for OpenIncidents before implementation starts.
   - local or development execution remains part of the MVP
 - MVP capability contract:
   - ingest logs from cloud-native sources
-  - reduce and classify incidents
+  - filter and reduce incidents with error-first policy defaults
+  - correlate reduced incidents with linked repository context
   - optionally request structured LLM analysis
-  - notify through Slack and optionally Jira
+  - notify through Slack or Discord
 
 ## Dependencies
 
@@ -51,17 +55,21 @@ Define the product framing for OpenIncidents before implementation starts.
 
 - The repository stays documentation-first until the specs are sufficiently closed.
 - OpenIncidents remains cloud-agnostic at the product level while documenting GCP and AWS equally.
-- Slack, Jira, OpenAI, and Anthropic are the only named MVP integrations in the current phase.
+- GCP is the first implementation target; AWS remains available in the configuration and documentation model.
+- Slack, Discord, OpenAI, and Anthropic are the named MVP integrations in the current phase.
+- Notification routing is configurable to Slack, Discord, or both.
+- Python is the target implementation language for the first runtime delivery.
 - The product is planned as an open-source toolkit with clear boundaries between stable core contracts and pluggable edges.
 
 ## Open questions
 
-- See [OQ-101](90-open-questions.md#oq-101) for first implementation target priority if scope forces a single cloud first.
 - See [OQ-107](90-open-questions.md#oq-107) for the point at which cloud secret stores become mandatory.
+- See [OQ-111](90-open-questions.md#oq-111) for Jira reintroduction policy after the Slack/Discord MVP baseline.
 
 ## Deferred items
 
-- Additional notifiers beyond Slack and Jira
+- Additional notifiers beyond Slack and Discord
+- Jira reintegration as a post-MVP notifier/escalation target
 - Additional LLM providers beyond OpenAI and Anthropic
 - Auto-remediation workflows
 - Persistent storage and long-term incident history

@@ -1,5 +1,6 @@
 # Governance Specification: Security and IAM
 Date: 2026-03-08
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
@@ -38,6 +39,7 @@ Define the canonical security posture and IAM baseline for OpenIncidents across 
   - the Lambda execution role starts with basic runtime logging only
 - Secret-handling baseline:
   - environment variables are acceptable for the documented MVP path
+  - local `.env` is acceptable for development only and must stay out of version control
   - stronger cloud secret-store integration is expected before production hardening
 
 ## Dependencies

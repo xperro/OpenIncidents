@@ -1,4 +1,5 @@
 # OpenIncidents Specification Index
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 This directory is the canonical planning workspace for OpenIncidents.
 
@@ -27,7 +28,7 @@ This directory is the canonical planning workspace for OpenIncidents.
 - [20-infra/21-aws-terraform.md](20-infra/21-aws-terraform.md): AWS deployment contract
 - [30-integrations/30-config.md](30-integrations/30-config.md): `triage.yaml` schema and precedence
 - [30-integrations/31-llm.md](30-integrations/31-llm.md): optional LLM integration contract
-- [30-integrations/32-slack-jira.md](30-integrations/32-slack-jira.md): Slack and Jira notification contracts
+- [30-integrations/32-slack-jira.md](30-integrations/32-slack-jira.md): Slack and Discord notification contracts
 - [40-governance/40-security-iam.md](40-governance/40-security-iam.md): canonical security and IAM policy
 - [90-open-questions.md](90-open-questions.md): open decision backlog
 

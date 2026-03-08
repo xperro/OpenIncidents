@@ -1,28 +1,28 @@
-# Integration Specification: Slack and Jira
+# Integration Specification: Slack and Discord
 Date: 2026-03-08
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
-Define the notification and ticketing contracts that turn reduced incidents into actionable outputs.
+Define the notification contracts that turn reduced incidents into actionable outputs.
 
 ## Scope
 
 - In scope:
   - Slack message structure
-  - Jira ticket structure
+  - Discord message structure
   - enablement rules and required configuration
   - relationship between incident data and outbound integrations
 - Out of scope:
   - provider-specific authentication flows
-  - ticket lifecycle automation after creation
   - UI-specific rendering beyond the documented fields
 
 ## Responsibilities
 
 - Define the required fields that outbound integrations must receive.
 - Keep notification rendering rules out of runtime and config documents.
-- Describe the baseline relationship between Slack visibility and Jira escalation.
-- Preserve consistent message and ticket structure across clouds.
+- Describe the baseline relationship between Slack and Discord routing.
+- Preserve consistent message structure across clouds.
 
 ## Contracts
 
@@ -31,15 +31,16 @@ Define the notification and ticketing contracts that turn reduced incidents into
   - short summary
   - occurrence count inside the aggregation window
   - source links when available
-  - Jira link when a ticket exists
   - suggested fix when LLM analysis is enabled
-- Jira ticket must include:
-  - summary using environment, service, and severity
-  - reduced context and truncated stacktrace in the description
-  - labels for `triage`, service, environment, and severity
+- Discord message must include:
+  - header with service, severity, and environment
+  - short summary
+  - occurrence count inside the aggregation window
+  - source links when available
+  - suggested fix when LLM analysis is enabled
 - Integration enablement:
-  - Slack and Jira are individually configurable
-  - Slack is the baseline outbound notification channel in the current design
+  - Slack and Discord are individually configurable
+  - global routing in config supports `slack`, `discord`, or `both`
 
 ## Dependencies
 
@@ -52,18 +53,18 @@ Define the notification and ticketing contracts that turn reduced incidents into
 
 ## Locked decisions
 
-- Slack and Jira are the only named notification integrations in the current MVP documentation.
-- Slack remains the primary notification surface for actionable incidents.
-- Jira ticket content must be derived from reduced incident context rather than raw unbounded logs.
+- Slack and Discord are the only named notification integrations in the current MVP documentation.
+- Either Slack or Discord can be the primary channel through configuration.
 - Notification structure is cloud-agnostic and should not branch by provider in this document.
 
 ## Open questions
 
-- See [OQ-106](../90-open-questions.md#oq-106) for the exact ticket-creation threshold.
 - See [OQ-107](../90-open-questions.md#oq-107) for when cloud secret stores become the required deployment path.
+- See [OQ-106](../90-open-questions.md#oq-106) for future service-level routing vs global routing only.
+- See [OQ-111](../90-open-questions.md#oq-111) for Jira reintroduction policy.
 
 ## Deferred items
 
-- Bidirectional Jira updates
-- Issue deduplication across multiple incidents
+- Cross-channel deduplication across Slack and Discord posts
+- Jira integration after the Slack/Discord MVP baseline
 - Additional channels such as email or paging systems

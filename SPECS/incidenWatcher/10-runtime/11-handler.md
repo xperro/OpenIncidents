@@ -1,21 +1,23 @@
 # Runtime Specification: `triage-handler`
 Date: 2026-03-08
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
-Define the Go runtime behavior that receives cloud log events, reduces noise, optionally calls an LLM, and emits actionable notifications.
+Define the Python runtime behavior that receives cloud log events, reduces noise, enriches with linked repository context, optionally calls an LLM, and emits actionable notifications.
 
 ## Scope
 
 - In scope:
   - ingress from GCP, AWS, and local development sources
-  - normalization, fingerprinting, reduction, and decision policy
+  - normalization, error filtering, fingerprinting, reduction, and decision policy
+  - repository context lookup from linked Git repositories (with optional local cache path)
   - optional LLM invocation and structured result handling
-  - emission of Slack and Jira payloads
+  - emission of Slack and Discord payloads
   - baseline runtime observability
 - Out of scope:
   - Terraform resource definitions
-  - final Slack and Jira presentation details beyond the payload boundary
+  - final Slack and Discord presentation details beyond the payload boundary
   - durable storage or historical analytics
 
 ## Responsibilities
@@ -23,8 +25,9 @@ Define the Go runtime behavior that receives cloud log events, reduces noise, op
 - Decode source-specific events into a common internal representation.
 - Normalize fields required by the core contracts from [../01-system-architecture.md](../01-system-architecture.md).
 - Aggregate repeated events within a bounded window and enforce dedupe behavior.
+- Retrieve relevant code context from linked repositories using incident-derived search keys.
 - Decide whether LLM analysis and notifications should run for a given incident.
-- Emit structured payloads for downstream Slack and Jira integrations.
+- Emit structured payloads for downstream Slack and Discord integrations.
 - Include request identifiers and fingerprints in runtime logs.
 
 ## Contracts
@@ -34,13 +37,14 @@ Define the Go runtime behavior that receives cloud log events, reduces noise, op
   - AWS CloudWatch Logs subscription delivery to the runtime
   - local `stdin` or file input for development
 - Core runtime defaults:
+  - severity filter: `ERROR` and `CRITICAL` by default
   - aggregation window: 300 seconds
   - dedupe: one analysis per fingerprint per window
   - stacktrace or payload truncation before notification and LLM submission
 - Integration handoff contract:
   - runtime produces incident data with summary, severity, service, env, counts, links, and optional LLM output
-  - Slack and Jira formatting rules live in [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
-- Runtime configuration is driven by [../30-integrations/30-config.md](../30-integrations/30-config.md) plus environment variables required by integrations
+  - Slack and Discord formatting rules live in [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
+- Runtime configuration is driven by [../30-integrations/30-config.md](../30-integrations/30-config.md), local `.env` for development, plus environment variables required by integrations
 
 ## Dependencies
 
@@ -55,8 +59,9 @@ Define the Go runtime behavior that receives cloud log events, reduces noise, op
 ## Locked decisions
 
 - `triage-handler` remains the runtime name.
-- The runtime stays Go-based in the current design.
+- The runtime implementation target is Python in the current design.
 - Reduction always happens before optional LLM analysis.
+- Linked repository access uses config-declared Git URLs with credential references from environment variables.
 - Runtime logs must include request correlation and incident fingerprint data.
 
 ## Open questions
@@ -64,7 +69,7 @@ Define the Go runtime behavior that receives cloud log events, reduces noise, op
 - See [OQ-102](../90-open-questions.md#oq-102) for the preferred GCP event delivery model.
 - See [OQ-103](../90-open-questions.md#oq-103) for the default AWS packaging format.
 - See [OQ-104](../90-open-questions.md#oq-104) for state placement of dedupe and rate limits.
-- See [OQ-106](../90-open-questions.md#oq-106) for Jira ticket creation policy.
+- See [OQ-106](../90-open-questions.md#oq-106) for channel routing granularity (global vs service-level).
 
 ## Deferred items
 

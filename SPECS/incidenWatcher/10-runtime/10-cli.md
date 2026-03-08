@@ -1,5 +1,6 @@
 # CLI Specification: `triage`
 Date: 2026-03-08
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
@@ -23,6 +24,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, an
 - Generate deterministic config and Terraform inputs.
 - Validate that required local credentials already exist.
 - Run the handler locally against supported development sources.
+- Validate linked repository paths and required local configuration before runtime execution.
 - Print clear next steps after generation or infrastructure actions.
 
 ## Contracts
@@ -42,6 +44,9 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, an
   - `triage.yaml`
   - cloud-specific Terraform inputs
   - a predictable project scaffold for later implementation work
+- Local run prerequisites:
+  - `.env` may be used for local development secrets and must stay untracked
+  - configured repository Git URLs and credential env vars must be resolvable for context enrichment
 - Override model:
   - flags may override selected config values without redefining the full config schema
 
@@ -62,7 +67,6 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, an
 
 ## Open questions
 
-- See [OQ-101](../90-open-questions.md#oq-101) if implementation sequencing forces one cloud ahead of the other.
 - See [OQ-108](../90-open-questions.md#oq-108) for whether Terraform execution remains a first-class CLI responsibility or a convenience wrapper.
 
 ## Deferred items

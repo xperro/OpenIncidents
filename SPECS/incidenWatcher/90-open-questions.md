@@ -1,5 +1,6 @@
 # OpenIncidents Open Questions
 Date: 2026-03-08
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 This file is the canonical backlog for unresolved product and design decisions.
 
@@ -8,14 +9,6 @@ This file is the canonical backlog for unresolved product and design decisions.
 - Link here whenever a spec needs a decision that is not yet locked.
 - Record the current default so implementation does not invent its own fallback later.
 - Remove or rewrite an entry only when the corresponding decision is captured in the canonical spec.
-
-## OQ-101
-
-Question: Which cloud should become the first implementation target if the MVP cannot ship both clouds at once?
-
-Current default: keep both GCP and AWS fully documented; if execution scope tightens later, prefer GCP as the first delivered path because the current design is slightly clearer around Pub/Sub and Cloud Run.
-
-Affected docs: [00-product-overview.md](00-product-overview.md), [20-infra/20-gcp-terraform.md](20-infra/20-gcp-terraform.md), [20-infra/21-aws-terraform.md](20-infra/21-aws-terraform.md)
 
 ## OQ-102
 
@@ -51,11 +44,11 @@ Affected docs: [30-integrations/31-llm.md](30-integrations/31-llm.md), [40-gover
 
 ## OQ-106
 
-Question: Under what policy should Jira tickets be created instead of sending Slack only?
+Question: Should routing stay channel-selective (`slack`, `discord`, or `both`) at service level, or only global?
 
-Current default: Slack remains the primary notification channel for actionable incidents; Jira creation stays conditional on policy thresholds that still need to be formalized.
+Current default: keep global routing in `triage.yaml` first; service-level routing is deferred.
 
-Affected docs: [01-system-architecture.md](01-system-architecture.md), [10-runtime/11-handler.md](10-runtime/11-handler.md), [30-integrations/32-slack-jira.md](30-integrations/32-slack-jira.md)
+Affected docs: [30-integrations/30-config.md](30-integrations/30-config.md), [30-integrations/32-slack-jira.md](30-integrations/32-slack-jira.md)
 
 ## OQ-107
 
@@ -72,3 +65,11 @@ Question: Should the CLI own `terraform plan/apply`, or should it stop at genera
 Current default: keep `infra plan` and `infra apply` in the CLI specification, but treat them as convenience commands rather than as the only valid operating path.
 
 Affected docs: [10-runtime/10-cli.md](10-runtime/10-cli.md), [30-integrations/30-config.md](30-integrations/30-config.md)
+
+## OQ-111
+
+Question: When Jira is reintroduced, should it be notifier-level config, escalation policy output, or both?
+
+Current default: defer Jira until after Slack/Discord pipeline is stable in MVP.
+
+Affected docs: [00-product-overview.md](00-product-overview.md), [30-integrations/32-slack-jira.md](30-integrations/32-slack-jira.md)

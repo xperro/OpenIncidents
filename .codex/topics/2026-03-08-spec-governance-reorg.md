@@ -4,10 +4,10 @@ Date: 2026-03-08
 
 ## Related specs
 
-- [OpenIncidents Specification Index](../../SPECS/chrisloarryn/README.md)
-- [OpenIncidents Product Overview](../../SPECS/chrisloarryn/00-product-overview.md)
-- [OpenIncidents System Architecture](../../SPECS/chrisloarryn/01-system-architecture.md)
-- [OpenIncidents Open Questions](../../SPECS/chrisloarryn/90-open-questions.md)
+- [OpenIncidents Specification Index](../../SPECS/incidenWatcher/README.md)
+- [OpenIncidents Product Overview](../../SPECS/incidenWatcher/00-product-overview.md)
+- [OpenIncidents System Architecture](../../SPECS/incidenWatcher/01-system-architecture.md)
+- [OpenIncidents Open Questions](../../SPECS/incidenWatcher/90-open-questions.md)
 
 ## AGENTS constraints
 
@@ -17,7 +17,7 @@ Date: 2026-03-08
 
 ## Decisions
 
-- Reorganized `SPECS/chrisloarryn/` into root guidance plus subsystem subfolders.
+- Reorganized `SPECS/incidenWatcher/` into root guidance plus subsystem subfolders.
 - Locked the canonical names `OpenIncidents`, `triage`, and `triage-handler`.
 - Established `90-open-questions.md` as the only canonical backlog for unresolved design decisions.
 - Created `.codex/topics/` as the working layer for one note per chat or work topic.
@@ -31,3 +31,16 @@ Date: 2026-03-08
 - Refine open questions as product decisions are made.
 - Tighten subsystem docs once implementation order is chosen.
 - Keep future topic notes linked to the relevant canonical specs.
+
+## Session updates (MVP requirements alignment)
+
+- Updated canonical specs to align MVP with error-first log triage, linked repository analysis, optional LLM diagnostics, and Slack or Discord reporting.
+- Updated runtime direction to Python while keeping canonical names `OpenIncidents`, `triage`, and `triage-handler`.
+- Added explicit `.env` development posture in specs and created `.gitignore`/`.env.example` to prevent secret commits.
+- Added OQ-109 and OQ-110 in the canonical backlog for notifier precedence and repository access model decisions.
+
+## Session updates (decision closure)
+
+- Closed first-cloud sequencing as GCP-first while keeping AWS configurable in the MVP contract.
+- Closed notifier direction to configurable Slack/Discord routing (`slack`, `discord`, `both`) and deferred Jira to post-MVP.
+- Closed repository access direction to Git URL + credentials (env-referenced), with optional local cache path for efficient context extraction.

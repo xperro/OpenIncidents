@@ -1,5 +1,6 @@
 # OpenIncidents System Architecture
 Date: 2026-03-08
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
@@ -28,18 +29,20 @@ Describe the end-to-end system flow and the stable domain contracts that subsyst
 - Canonical flow:
   1. ingest log event
   2. normalize to `NormalizedLogEvent`
-  3. fingerprint and reduce into `ReducedIncident`
-  4. evaluate `DecisionPolicy`
-  5. optionally request LLM analysis and receive `LLMResult`
-  6. emit notification payloads for Slack and Jira
+  3. apply error-first filtering and fingerprint into `ReducedIncident`
+  4. enrich incident context with repository signals from linked repos
+  5. evaluate `DecisionPolicy`
+  6. optionally request LLM analysis and receive `LLMResult`
+  7. emit notification payloads for Slack or Discord
 - Stable core contracts:
   - `NormalizedLogEvent`: cloud, source, service, env, severity, timestamp, summary, raw excerpt, and source link
   - `ReducedIncident`: fingerprint, aggregation window, count, representative event, reduced context, and truncated stacktrace
-  - `DecisionPolicy`: severity threshold, dedupe rules, aggregation window, rate limits, and ticketing thresholds
-  - `LLMResult`: strict JSON containing summary, suspected cause, suggested fix, confidence, and ticket-safety signal
+  - `RepoContext`: repository id, commit reference, file paths, code excerpts, and confidence score for incident relevance
+  - `DecisionPolicy`: severity threshold, dedupe rules, aggregation window, rate limits, and notification routing thresholds
+  - `LLMResult`: strict JSON containing summary, suspected cause, suggested fix, confidence, and escalation-safety signal
 - Pluggable edges:
   - sources: GCP, AWS, local
-  - notifiers: Slack, Jira, future channels
+  - notifiers: Slack, Discord, future channels
   - LLM providers: OpenAI, Anthropic, future providers
 
 ## Dependencies
@@ -54,8 +57,10 @@ Describe the end-to-end system flow and the stable domain contracts that subsyst
 ## Locked decisions
 
 - The pipeline always reduces raw log data before any optional LLM step.
+- Repository enrichment happens after reduction so LLM input stays bounded and relevant.
 - The stable core stays vendor-neutral even when edges are provider-specific.
 - Local execution is part of the architecture, not a side utility.
+- Repository enrichment uses Git repository sources declared in config with credential indirection through environment variables.
 - Observability at runtime must preserve request identifiers and incident fingerprints.
 
 ## Open questions
@@ -63,7 +68,7 @@ Describe the end-to-end system flow and the stable domain contracts that subsyst
 - See [OQ-102](90-open-questions.md#oq-102) for the preferred GCP runtime mode.
 - See [OQ-103](90-open-questions.md#oq-103) for the default AWS packaging format.
 - See [OQ-104](90-open-questions.md#oq-104) for dedupe and rate-limit state storage.
-- See [OQ-106](90-open-questions.md#oq-106) for ticket creation thresholds.
+- See [OQ-106](90-open-questions.md#oq-106) for channel routing granularity (global vs service-level).
 
 ## Deferred items
 

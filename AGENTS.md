@@ -12,15 +12,15 @@
 ## Current phase
 
 - OpenIncidents is in a documentation-first phase.
-- Prefer clarifying intent, structure, and contracts in `SPECS/chrisloarryn/` before writing product code, Terraform, generators, or automation.
-- If requirements remain ambiguous, add or update an entry in `SPECS/chrisloarryn/90-open-questions.md` rather than guessing.
+- Prefer clarifying intent, structure, and contracts in `SPECS/incidenWatcher/` before writing product code, Terraform, generators, or automation.
+- If requirements remain ambiguous, add or update an entry in `SPECS/incidenWatcher/90-open-questions.md` rather than guessing.
 
 ## Required reading before implementation
 
-- Start with `SPECS/chrisloarryn/README.md`.
-- Read `SPECS/chrisloarryn/00-product-overview.md` and `SPECS/chrisloarryn/01-system-architecture.md`.
+- Start with `SPECS/incidenWatcher/README.md`.
+- Read `SPECS/incidenWatcher/00-product-overview.md` and `SPECS/incidenWatcher/01-system-architecture.md`.
 - Read the subsystem documents that match the task area before proposing or making changes.
-- Treat `SPECS/chrisloarryn/90-open-questions.md` as the canonical backlog for unresolved product and design decisions.
+- Treat `SPECS/incidenWatcher/90-open-questions.md` as the canonical backlog for unresolved product and design decisions.
 
 ## Naming and product boundaries
 
@@ -31,7 +31,7 @@
 
 ## Documentation rules
 
-- `SPECS/chrisloarryn/README.md` is the navigation entrypoint for the spec set.
+- `SPECS/incidenWatcher/README.md` is the navigation entrypoint for the spec set.
 - Root documents define orientation and cross-cutting architecture; subsystem details live in subfolders.
 - `SPECS/merged-resume/` is the derived summary layer for spec areas that need quick comparison or digestion.
 - Avoid duplicating canonical concerns:
@@ -49,4 +49,4 @@
 - Use `.codex/topics/` for one Markdown file per chat or work topic.
 - Topic notes must reference related specs and list the `AGENTS.md` constraints that shaped the work.
 - `.codex` is for working context, not for long-term canonical product requirements.
-- Do not move, rename, or replace `.codex/` or `SPECS/chrisloarryn/` unless the user explicitly asks for it.
+- Do not move, rename, or replace `.codex/` or `SPECS/incidenWatcher/` unless the user explicitly asks for it.

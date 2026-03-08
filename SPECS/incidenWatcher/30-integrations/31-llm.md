@@ -1,5 +1,6 @@
 # Integration Specification: LLM Providers
 Date: 2026-03-08
+Authors: Jorge Aguilera (xperro) / Cristobal Contreras (chrisloarryn)
 
 ## Intent
 
@@ -36,7 +37,7 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
   - `suspected_cause`
   - `suggested_fix`
   - `confidence`
-  - `safe_to_ticket`
+  - `safe_to_escalate`
 - Safety constraints:
   - redact sensitive patterns before provider submission
   - cap payload size before sending any incident context

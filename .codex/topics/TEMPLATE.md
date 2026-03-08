@@ -4,7 +4,7 @@ Date: YYYY-MM-DD
 
 ## Related specs
 
-- [Spec link](../../SPECS/chrisloarryn/README.md)
+- [Spec link](../../SPECS/incidenWatcher/README.md)
 
 ## AGENTS constraints
 
