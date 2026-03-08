@@ -33,6 +33,7 @@
 
 - `SPECS/chrisloarryn/README.md` is the navigation entrypoint for the spec set.
 - Root documents define orientation and cross-cutting architecture; subsystem details live in subfolders.
+- `SPECS/merged-resume/` is the derived summary layer for spec areas that need quick comparison or digestion.
 - Avoid duplicating canonical concerns:
   - Product goals and repo shape belong in `00-product-overview.md`.
   - Cross-component flow and stable domain contracts belong in `01-system-architecture.md`.
@@ -40,6 +41,7 @@
   - Security and IAM policy belong in `40-governance/40-security-iam.md`.
   - Config, LLM, and notification contracts belong in `30-integrations/`.
 - When a decision is unresolved, document the question and current default instead of filling the gap with an undocumented assumption.
+- When `SPECS/chrisloarryn/` or `SPECS/xperro/` changes, refresh the related summaries in `SPECS/merged-resume/` as part of the same documentation update.
 
 ## `.codex` operating rules
 
