@@ -273,7 +273,7 @@ class CliTests(unittest.TestCase):
 
     def test_run_executes_go_template_locally(self):
         if shutil.which("go") is None:
-            self.skipTest("go toolchain is not installed")
+            self.skipTest("go is not installed locally")
         go_version = subprocess.run(
             ["go", "version"],
             check=False,
@@ -281,7 +281,7 @@ class CliTests(unittest.TestCase):
             text=True,
         )
         if "go1.26.1" not in go_version.stdout:
-            self.skipTest("go1.26.1 toolchain is not installed locally")
+            self.skipTest("go1.26.1 is not installed locally")
 
         self.complete_bootstrap()
         project = default_project_config()

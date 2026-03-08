@@ -34,6 +34,7 @@ Describe the Go-specific implementation shape of `triage-handler` as a serverles
   - the GCP variant lives at `triage/templates/go/gcp`, targets Cloud Run ingress, and contains only GCP-specific runtime wiring plus shared Go modules
   - the AWS variant lives at `triage/templates/go/aws`, targets Lambda ingress, and contains only AWS-specific runtime wiring plus shared Go modules
   - both variants keep `triage-handler` as the deployed runtime name
+  - both variants require a locally installed Go 1.26.1 toolchain and intentionally do not rely on a `toolchain` directive in `go.mod`
 - Service role:
   - the Go implementation represents a serverless receiver service for pushed log events
   - on GCP it exposes the Cloud Run HTTP endpoint

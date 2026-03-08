@@ -29,6 +29,7 @@ Describe how the Go implementation of `triage-handler` should run locally and be
   - the canonical source trees are `triage/templates/go/gcp` and `triage/templates/go/aws`
   - the selected template contains only the cloud-specific entrypoints and packaging files required for that target
   - shared normalization, reduction, enrichment, notifier, and local replay packages remain structurally aligned across both variants
+  - both variants require Go 1.26.1 to be installed locally; the templates intentionally omit a `toolchain` directive so packaging does not auto-download a different Go version
 - Local validation:
   - support replay from `stdin` or file input
   - support optional local HTTP smoke validation by running the same `chi` router used for the Cloud Run path in the GCP variant
