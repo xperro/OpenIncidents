@@ -22,6 +22,7 @@ Define the canonical configuration file and precedence rules that drive OpenInci
 - Provide one human-editable configuration entrypoint for the planned toolkit.
 - Define which values live in config versus environment variables.
 - Define how project configuration differs from persistent local CLI state.
+- Keep the most frequently changed operator settings easy to locate.
 - Define precedence between config, flags, and runtime defaults.
 - Keep shared policy values out of component-specific ad hoc files.
 
@@ -30,6 +31,7 @@ Define the canonical configuration file and precedence rules that drive OpenInci
 - Canonical config file: `triage.yaml`
 - Development secret source: local `.env` file (must remain untracked)
 - Local CLI bootstrap state: per-user JSON file documented in [../10-runtime/12-cli-state.md](../10-runtime/12-cli-state.md)
+- Operator runbook for config changes: [33-config-operations.md](33-config-operations.md)
 - MVP schema:
 
 ```yaml
@@ -99,6 +101,20 @@ integrations:
   - the CLI local state file is per-user bootstrap state and must never live inside the repo
   - raw LLM API keys do not belong in `triage.yaml`
   - `llm.api_key_env` is only an environment-variable reference for runtime wiring, not the secret value itself
+- Configuration surface map:
+  - `./triage.yaml`: project-scoped runtime and infra settings
+  - `~/.triage/config.json` on Linux and macOS, or `%APPDATA%/triage/config.json` on Windows: per-user bootstrap state and local secrets
+  - `./.env` or process environment: values that satisfy environment-variable references declared in config
+  - `./.triage/`: generated project workspace for infra, build artifacts, and caches
+- Operator hotspots:
+  - frequent runtime policy changes live under `policy`
+  - notification and Jira toggles live under `integrations`
+  - LLM project defaults live under `llm`
+  - cloud-specific manual overrides live under `gcp` and `aws`
+- Jira operator path:
+  - `triage config where integrations.jira.enabled`
+  - `triage config where policy.jira_min_severity`
+  - `triage config wizard`
 - Precedence model:
   - CLI flags override `triage.yaml`
   - `triage.yaml` overrides the local CLI state file for project-scoped settings
@@ -133,6 +149,7 @@ integrations:
 - Runtime contract: [../10-runtime/11-handler.md](../10-runtime/11-handler.md)
 - LLM contract: [31-llm.md](31-llm.md)
 - Notification contract: [32-slack-jira.md](32-slack-jira.md)
+- Config operations guide: [33-config-operations.md](33-config-operations.md)
 - Open backlog: [../90-open-questions.md](../90-open-questions.md)
 
 ## Locked decisions
@@ -145,6 +162,7 @@ integrations:
 - CLI overrides remain limited to selected operational fields rather than replacing the full config model.
 - Secret values are referenced through environment variable names, not embedded directly in the file.
 - Local `.env` is allowed for MVP development and must be excluded from version control.
+- Frequently changed operator settings stay concentrated under `policy`, `integrations`, `llm`, and cloud override blocks.
 - Repository integration uses Git URL + credentials, with optional local cache paths for efficiency.
 - Notification routing is explicit through `integrations.routing` with support for `slack`, `discord`, or `both`.
 - Jira remains separately configurable as an escalation target rather than a chat-routing destination.

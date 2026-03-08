@@ -23,6 +23,7 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
 - Separate user-local bootstrap data from versionable project configuration.
 - Define how bootstrap completion is computed and recomputed.
 - Define how `triage` updates state after interactive setup or later settings changes.
+- Define how operators discover the local state path without confusing it with the project `.triage/` directory.
 
 ## Contracts
 
@@ -31,9 +32,13 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
   - one file per local user profile
   - the file lives outside the repository and must not be committed or copied into project scaffolds
 - Storage path:
-  - Windows: `%APPDATA%/OpenIncidents/triage/config.json`
-  - macOS: `~/Library/Application Support/OpenIncidents/triage/config.json`
-  - Linux: `${XDG_CONFIG_HOME:-~/.config}/openincidents/triage/config.json`
+  - Windows: `%APPDATA%/triage/config.json`
+  - macOS: `~/.triage/config.json`
+  - Linux: `~/.triage/config.json`
+- Path distinction:
+  - `~/.triage/` or `%APPDATA%/triage/` is the per-user local CLI home
+  - `./.triage/` inside a project directory is the generated project workspace
+  - the two locations are intentionally separate and must not be conflated
 - Minimum persisted shape:
 
 ```json
@@ -72,6 +77,9 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
   - `triage init` creates the state file and may leave it partial if the bootstrap flow does not complete
   - `triage settings set <key> <value>` updates only the local state file
   - the public CLI key `llm.api_key` maps to the persisted field `llm.api_key_value`
+  - `triage config show --local` reads from this file and must redact secret values in human-facing output
+  - `triage config where llm.api_key` resolves to this file
+  - `triage config wizard` mutates this file when the selected key is local-scoped
   - `triage settings validate --cloud gcp|aws|all` reruns live credential and tooling checks, updates cloud validation results, and recomputes `bootstrap_complete`
   - `bootstrap_complete` becomes `true` only when at least one cloud has validated successfully, an LLM provider has been chosen explicitly, and a token exists if the provider is not `none`
 - File protection baseline:
@@ -83,6 +91,7 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
 
 - CLI contract: [10-cli.md](10-cli.md)
 - Shared config contract: [../30-integrations/30-config.md](../30-integrations/30-config.md)
+- Config operations guide: [../30-integrations/33-config-operations.md](../30-integrations/33-config-operations.md)
 - LLM contract: [../30-integrations/31-llm.md](../30-integrations/31-llm.md)
 - Security baseline: [../40-governance/40-security-iam.md](../40-governance/40-security-iam.md)
 - Open backlog: [../90-open-questions.md](../90-open-questions.md)
@@ -92,6 +101,7 @@ Define the per-user persistent local state that `triage` uses for bootstrap comp
 - `triage` keeps bootstrap state in a per-user JSON file rather than in `triage.yaml`.
 - The local state file is the documented persistence location for the raw LLM token during the current phase.
 - `bootstrap_complete` is recomputed after `init`, `settings set`, and `settings validate`.
+- The local CLI home uses `~/.triage/` on Unix-like systems and `%APPDATA%/triage/` on Windows for operator discoverability.
 - The local state file is cross-platform and must not depend on third-party Python packages.
 
 ## Open questions

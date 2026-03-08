@@ -22,6 +22,7 @@ Define the notification and ticketing contracts that turn reduced incidents into
 - Define the required fields that outbound integrations must receive.
 - Keep notification rendering rules out of runtime and config documents.
 - Describe the baseline relationship between chat visibility and Jira escalation.
+- Keep Jira-related configuration easy to locate and change for operators.
 - Preserve consistent message and ticket structure across clouds.
 
 ## Contracts
@@ -53,6 +54,10 @@ Define the notification and ticketing contracts that turn reduced incidents into
   - the documented MVP default for `policy.jira_min_severity` is `CRITICAL`
   - chat notifications to Slack and Discord still happen when their routing is enabled, even if a Jira ticket is also created
   - the runtime creates at most one Jira ticket per fingerprint within the current aggregation window
+- Operator discovery path:
+  - `triage config where integrations.jira.enabled`
+  - `triage config where policy.jira_min_severity`
+  - `triage config wizard`
 
 ## Dependencies
 
@@ -60,6 +65,7 @@ Define the notification and ticketing contracts that turn reduced incidents into
 - Architecture baseline: [../01-system-architecture.md](../01-system-architecture.md)
 - Runtime contract: [../10-runtime/11-handler.md](../10-runtime/11-handler.md)
 - Config contract: [30-config.md](30-config.md)
+- Config operations guide: [33-config-operations.md](33-config-operations.md)
 - Security baseline: [../40-governance/40-security-iam.md](../40-governance/40-security-iam.md)
 - Open backlog: [../90-open-questions.md](../90-open-questions.md)
 
@@ -69,6 +75,7 @@ Define the notification and ticketing contracts that turn reduced incidents into
 - Slack and Discord are the primary notification surfaces for actionable incidents.
 - Jira ticket content must be derived from reduced incident context rather than raw unbounded logs.
 - Jira escalation starts from severity `CRITICAL` in the documented MVP baseline.
+- Jira-related knobs must be discoverable from a single operator workflow.
 - Notification structure is cloud-agnostic and should not branch by provider in this document.
 
 ## Open questions
