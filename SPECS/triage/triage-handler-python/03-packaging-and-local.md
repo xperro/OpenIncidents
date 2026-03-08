@@ -1,8 +1,8 @@
-# Python Handler Packaging and Local Validation
+# Python Receiver Service Packaging and Local Validation
 
 ## Intent
 
-Describe how the Python implementation of `triage-handler` should run locally and be packaged for GCP and AWS.
+Describe how the Python implementation of `triage-handler` should run locally and be packaged as a serverless receiver service for GCP and AWS.
 
 ## Scope
 
@@ -30,10 +30,10 @@ Describe how the Python implementation of `triage-handler` should run locally an
   - use standard-library helper entrypoints rather than third-party CLI frameworks
 - GCP packaging:
   - package as a container image suitable for Cloud Run
-  - expose an HTTP entrypoint for Pub/Sub push delivery
+  - expose the HTTP endpoint of the receiver service for Pub/Sub push delivery
 - AWS packaging:
   - package as a zip artifact suitable for Lambda
-  - expose a Lambda-compatible handler entrypoint
+  - expose a Lambda-compatible receiver service entrypoint
 - CLI handoff:
   - `triage infra apply` consumes the built artifact path or image reference produced from this implementation
 - Minimum tests:

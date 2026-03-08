@@ -1,8 +1,8 @@
-# Go Handler Runtime Shape
+# Go Receiver Service Runtime Shape
 
 ## Intent
 
-Describe how the Go implementation of `triage-handler` should be structured internally.
+Describe how the Go implementation of `triage-handler` should be structured internally as a serverless receiver service.
 
 ## Scope
 
@@ -17,6 +17,7 @@ Describe how the Go implementation of `triage-handler` should be structured inte
 
 ## Responsibilities
 
+- Define the Go service entrypoint that terminates pushed log events before normalization.
 - Define the Go handler execution path from ingress through outbound notification decisions.
 - Keep GCP and AWS adapters separate while preserving a shared reduced incident model.
 - Document where repository enrichment and local replay fit in the Go implementation.
@@ -24,8 +25,8 @@ Describe how the Go implementation of `triage-handler` should be structured inte
 ## Contracts
 
 - Adapter shape:
-  - GCP adapter accepts Pub/Sub push requests through an HTTP handler suitable for Cloud Run
-  - AWS adapter accepts CloudWatch Logs subscription events through a Lambda-compatible handler
+  - GCP adapter accepts Pub/Sub push through an HTTP service endpoint suitable for Cloud Run
+  - AWS adapter accepts CloudWatch Logs subscription events through a Lambda-compatible service entrypoint
   - local adapter replays JSON input from `stdin` or file for validation
 - Suggested package boundaries:
   - `cmd/` only for local helper entrypoints if needed
@@ -56,6 +57,7 @@ Describe how the Go implementation of `triage-handler` should be structured inte
 
 ## Locked decisions
 
+- The Go implementation is documented as a receiver service with explicit cloud entrypoints.
 - The Go handler keeps ingress adapters separated by cloud.
 - Repository enrichment runs after reduction and before outbound notification.
 - Local replay is part of the handler implementation, not a separate tool.

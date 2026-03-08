@@ -1,8 +1,8 @@
-# Go Handler Integrations
+# Go Receiver Service Integrations
 
 ## Intent
 
-Describe how the Go implementation of `triage-handler` should integrate with Slack, Discord, and Jira.
+Describe how the Go implementation of `triage-handler` as a receiver service should integrate with Slack, Discord, and Jira.
 
 ## Scope
 
@@ -19,7 +19,7 @@ Describe how the Go implementation of `triage-handler` should integrate with Sla
 
 - Define Go-specific outbound integration behavior without changing the shared payload contract.
 - Keep notifier clients isolated from normalization and reduction logic.
-- Document failure handling that preserves runtime observability.
+- Document failure handling that preserves receiver service observability.
 
 ## Contracts
 

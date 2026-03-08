@@ -23,9 +23,9 @@ This directory is the canonical planning workspace for the `triage` specificatio
 - [00-product-overview.md](00-product-overview.md): product framing, MVP boundaries, naming, and platform expectations
 - [01-system-architecture.md](01-system-architecture.md): cross-component flow and stable domain contracts
 - [10-runtime/10-cli.md](10-runtime/10-cli.md): CLI responsibilities, template handling, and deployment workflow
-- [10-runtime/11-handler.md](10-runtime/11-handler.md): shared handler contract and runtime behavior across official templates
-- [triage-handler-go/README.md](triage-handler-go/README.md): Go-specific handler implementation detail for `triage-handler`
-- [triage-handler-python/README.md](triage-handler-python/README.md): Python-specific handler implementation detail for `triage-handler`
+- [10-runtime/11-handler.md](10-runtime/11-handler.md): shared serverless receiver service contract and runtime behavior across official templates
+- [triage-handler-go/README.md](triage-handler-go/README.md): Go-specific receiver service implementation detail for `triage-handler`
+- [triage-handler-python/README.md](triage-handler-python/README.md): Python-specific receiver service implementation detail for `triage-handler`
 - [20-infra/20-gcp-terraform.md](20-infra/20-gcp-terraform.md): GCP deployment contract
 - [20-infra/21-aws-terraform.md](20-infra/21-aws-terraform.md): AWS deployment contract
 - [30-integrations/30-config.md](30-integrations/30-config.md): `triage.yaml` schema and precedence

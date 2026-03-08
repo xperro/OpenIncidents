@@ -3,11 +3,12 @@ Date: 2026-03-08
 
 ## Intent
 
-Define the shared runtime behavior of `triage-handler` across the official Go and Python templates, including repository enrichment and multichannel notification handoff.
+Define the shared runtime behavior of `triage-handler` as the serverless receiver service across the official Go and Python templates, including repository enrichment and multichannel notification handoff.
 
 ## Scope
 
 - In scope:
+  - service ingress and receiver behavior for pushed log events
   - ingress from GCP, AWS, and local development sources
   - normalization, error filtering, fingerprinting, reduction, and decision policy
   - repository context lookup from linked Git repositories (with optional local cache path)
@@ -22,6 +23,7 @@ Define the shared runtime behavior of `triage-handler` across the official Go an
 ## Responsibilities
 
 - Decode source-specific events into a common internal representation.
+- Expose the serverless service entrypoint that receives pushed log events from the cloud transport layer.
 - Normalize fields required by the core contracts from [../01-system-architecture.md](../01-system-architecture.md).
 - Aggregate repeated events within a bounded window and enforce dedupe behavior.
 - Retrieve relevant code context from linked repositories using incident-derived search keys.
@@ -34,6 +36,10 @@ Define the shared runtime behavior of `triage-handler` across the official Go an
 - Official template runtimes:
   - Go
   - Python
+- Service model:
+  - `triage-handler` is the serverless receiver service for pushed log events
+  - on GCP, the service is an HTTP endpoint hosted in Cloud Run
+  - on AWS, the service is the Lambda runtime entrypoint invoked by the log subscription
 - Language-specific implementation detail:
   - Go-specific handler design lives in [../triage-handler-go/README.md](../triage-handler-go/README.md)
   - Python-specific handler design lives in [../triage-handler-python/README.md](../triage-handler-python/README.md)
@@ -41,8 +47,8 @@ Define the shared runtime behavior of `triage-handler` across the official Go an
   - the language chosen for `triage` does not constrain the handler implementation language
   - Go and Python remain valid handler implementations regardless of the CLI implementation being Python
 - Supported ingress paths:
-  - GCP Pub/Sub push delivery to an HTTP endpoint on Cloud Run
-  - AWS CloudWatch Logs subscription delivery to a Lambda handler
+  - GCP Pub/Sub push delivery to an HTTP endpoint on the Cloud Run receiver service
+  - AWS CloudWatch Logs subscription delivery to the Lambda entrypoint of the receiver service
   - local `stdin` or file input for development
 - Core runtime defaults:
   - severity filter: `ERROR` and `CRITICAL` by default
@@ -75,6 +81,7 @@ Define the shared runtime behavior of `triage-handler` across the official Go an
 - `triage-handler` remains the runtime name.
 - The runtime contract is language-agnostic even though official templates are provided in Go and Python.
 - Shared runtime behavior stays in this document; language-specific implementation detail belongs in `triage-handler-go/` and `triage-handler-python/`.
+- `triage-handler` is a serverless receiver service, not just a standalone callback or function body.
 - GCP traffic reaches the runtime through Pub/Sub push on Cloud Run.
 - AWS traffic reaches the runtime through CloudWatch Logs subscription delivery on Lambda.
 - Reduction always happens before optional LLM analysis.

@@ -40,8 +40,8 @@ Describe the end-to-end system flow and the stable domain contracts that subsyst
   - `DecisionPolicy`: severity threshold, dedupe rules, aggregation window, rate limits, routing thresholds, and ticketing thresholds
   - `LLMResult`: strict JSON containing summary, suspected cause, suggested fix, confidence, and escalation-safety signal
 - Runtime adapter contract:
-  - GCP adapter: Cloud Logging exports to Pub/Sub and reaches `triage-handler` through Pub/Sub push into Cloud Run
-  - AWS adapter: CloudWatch Logs reaches `triage-handler` through a log subscription into Lambda
+  - GCP adapter: Cloud Logging exports to Pub/Sub and reaches the `triage-handler` receiver service through Pub/Sub push into a Cloud Run endpoint
+  - AWS adapter: CloudWatch Logs reaches the `triage-handler` receiver service through a log subscription into a Lambda entrypoint
   - local adapter: `stdin` or file replay for development and validation
 - Pluggable edges:
   - sources: GCP, AWS, local
@@ -66,6 +66,7 @@ Describe the end-to-end system flow and the stable domain contracts that subsyst
 - Repository enrichment uses Git repository sources declared in config with credential indirection through environment variables.
 - GCP uses Pub/Sub push into Cloud Run as the canonical delivery model.
 - AWS uses CloudWatch Logs subscription into Lambda as the canonical delivery model.
+- `triage-handler` is the serverless receiver service that terminates pushed log events before normalization and reduction.
 - Observability at runtime must preserve request identifiers and incident fingerprints.
 
 ## Open questions

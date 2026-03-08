@@ -3,7 +3,7 @@ Date: 2026-03-08
 
 ## Intent
 
-Define the GCP deployment contract for routing Cloud Logging events into the OpenIncidents runtime.
+Define the GCP deployment contract for routing Cloud Logging events into the OpenIncidents receiver service runtime.
 
 ## Scope
 
@@ -25,6 +25,7 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
 - Define the Terraform variables and outputs that other components depend on.
 - State the default log filter shape for the GCP path.
 - Define the documented handoff between `triage` packaging and Terraform apply.
+- Define how Pub/Sub push reaches the deployed Cloud Run receiver service endpoint.
 - Link back to the canonical IAM and security policy instead of repeating it.
 
 ## Contracts
@@ -32,11 +33,14 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
 - MVP resource set:
   - Artifact Registry repository
   - Cloud Run service account
-  - Cloud Run service for `triage-handler`
+  - Cloud Run receiver service for `triage-handler`
   - Pub/Sub topic
   - Pub/Sub push subscription
   - Cloud Logging sink targeting the topic
   - IAM bindings for the sink writer and Pub/Sub push delivery path
+- Delivery contract:
+  - each exported log event is pushed from Pub/Sub to the HTTP endpoint exposed by the Cloud Run receiver service
+  - `triage-handler` is responsible for receiving, decoding, and processing those pushed events
 - Default log filter:
   - `severity_min` maps to a Cloud Logging filter in the form `severity>=X`
   - supported threshold values are `DEBUG`, `INFO`, `NOTICE`, `WARNING`, `ERROR`, `CRITICAL`, `ALERT`, and `EMERGENCY`

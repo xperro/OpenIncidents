@@ -1,8 +1,8 @@
-# Python Handler Runtime Shape
+# Python Receiver Service Runtime Shape
 
 ## Intent
 
-Describe how the Python implementation of `triage-handler` should be structured internally.
+Describe how the Python implementation of `triage-handler` should be structured internally as a serverless receiver service.
 
 ## Scope
 
@@ -17,6 +17,7 @@ Describe how the Python implementation of `triage-handler` should be structured 
 
 ## Responsibilities
 
+- Define the Python service entrypoint that terminates pushed log events before normalization.
 - Define the Python handler execution path from ingress through outbound notification decisions.
 - Keep GCP and AWS adapters separate while preserving a shared reduced incident model.
 - Document where repository enrichment and local replay fit in the Python implementation.
@@ -24,8 +25,8 @@ Describe how the Python implementation of `triage-handler` should be structured 
 ## Contracts
 
 - Adapter shape:
-  - GCP adapter accepts Pub/Sub push requests through an HTTP entrypoint suitable for Cloud Run
-  - AWS adapter accepts CloudWatch Logs subscription events through a Lambda-compatible handler
+  - GCP adapter accepts Pub/Sub push through an HTTP service endpoint suitable for Cloud Run
+  - AWS adapter accepts CloudWatch Logs subscription events through a Lambda-compatible service entrypoint
   - local adapter replays JSON input from `stdin` or file for validation
 - Suggested module boundaries:
   - `config/` for `triage.yaml` and environment resolution
@@ -55,6 +56,7 @@ Describe how the Python implementation of `triage-handler` should be structured 
 
 ## Locked decisions
 
+- The Python implementation is documented as a receiver service with explicit cloud entrypoints.
 - The Python handler keeps ingress adapters separated by cloud.
 - Repository enrichment runs after reduction and before outbound notification.
 - Local replay is part of the handler implementation, not a separate product.

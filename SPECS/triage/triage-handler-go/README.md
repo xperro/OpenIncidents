@@ -1,15 +1,15 @@
-# Go Handler Specification: `triage-handler-go`
+# Go Receiver Service Specification: `triage-handler-go`
 
 ## Intent
 
-Describe the Go-specific implementation shape of `triage-handler` while preserving the shared runtime contract defined in [../10-runtime/11-handler.md](../10-runtime/11-handler.md).
+Describe the Go-specific implementation shape of `triage-handler` as a serverless receiver service while preserving the shared runtime contract defined in [../10-runtime/11-handler.md](../10-runtime/11-handler.md).
 
 ## Scope
 
 - In scope:
-  - Go implementation detail for GCP, AWS, and local handler entrypoints
+  - Go implementation detail for GCP and AWS receiver service entrypoints plus local replay
   - package-level organization and execution model
-  - Slack, Discord, and Jira integration detail for the Go handler
+  - Slack, Discord, and Jira integration detail for the Go receiver service
   - packaging and local validation expectations for Go
 - Out of scope:
   - redefining the shared incident model
@@ -20,7 +20,7 @@ Describe the Go-specific implementation shape of `triage-handler` while preservi
 
 - Specialize the shared `triage-handler` contract for Go.
 - Define how the Go implementation structures adapters, reduction flow, and notifier clients.
-- Document Go-specific build and deployment expectations for Cloud Run and Lambda.
+- Document Go-specific build and deployment expectations for the serverless receiver service on Cloud Run and Lambda.
 - Stay aligned with the shared config, notification, IAM, and infra contracts.
 
 ## Contracts
@@ -28,6 +28,10 @@ Describe the Go-specific implementation shape of `triage-handler` while preservi
 - Runtime language: Go
 - Shared runtime contract source: [../10-runtime/11-handler.md](../10-runtime/11-handler.md)
 - Notification contract source: [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
+- Service role:
+  - the Go implementation represents a serverless receiver service for pushed log events
+  - on GCP it exposes the Cloud Run HTTP endpoint
+  - on AWS it exposes the Lambda runtime entrypoint
 - HTTP client baseline:
   - the Go handler uses `net/http` as the base client for Slack, Discord, and Jira
   - JSON encoding and decoding use the Go standard library
@@ -47,6 +51,7 @@ Describe the Go-specific implementation shape of `triage-handler` while preservi
 ## Locked decisions
 
 - Go is one of the two official handler implementation languages.
+- The Go implementation represents the deployed receiver service, not just an internal callback.
 - Go-specific handler HTTP integrations use `net/http`.
 - Go-specific handler detail belongs here instead of expanding the shared runtime spec.
 

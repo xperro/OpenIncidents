@@ -1,15 +1,15 @@
-# Python Handler Specification: `triage-handler-python`
+# Python Receiver Service Specification: `triage-handler-python`
 
 ## Intent
 
-Describe the Python-specific implementation shape of `triage-handler` while preserving the shared runtime contract defined in [../10-runtime/11-handler.md](../10-runtime/11-handler.md).
+Describe the Python-specific implementation shape of `triage-handler` as a serverless receiver service while preserving the shared runtime contract defined in [../10-runtime/11-handler.md](../10-runtime/11-handler.md).
 
 ## Scope
 
 - In scope:
-  - Python implementation detail for GCP, AWS, and local handler entrypoints
+  - Python implementation detail for GCP and AWS receiver service entrypoints plus local replay
   - module-level organization and execution model
-  - Slack, Discord, and Jira integration detail for the Python handler
+  - Slack, Discord, and Jira integration detail for the Python receiver service
   - packaging and local validation expectations for Python
 - Out of scope:
   - redefining the shared incident model
@@ -20,7 +20,7 @@ Describe the Python-specific implementation shape of `triage-handler` while pres
 
 - Specialize the shared `triage-handler` contract for Python.
 - Define how the Python implementation structures adapters, reduction flow, and notifier clients.
-- Document Python-specific build and deployment expectations for Cloud Run and Lambda.
+- Document Python-specific build and deployment expectations for the serverless receiver service on Cloud Run and Lambda.
 - Stay aligned with the shared config, notification, IAM, and infra contracts.
 
 ## Contracts
@@ -28,6 +28,10 @@ Describe the Python-specific implementation shape of `triage-handler` while pres
 - Runtime language: Python
 - Shared runtime contract source: [../10-runtime/11-handler.md](../10-runtime/11-handler.md)
 - Notification contract source: [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
+- Service role:
+  - the Python implementation represents a serverless receiver service for pushed log events
+  - on GCP it exposes the Cloud Run HTTP endpoint
+  - on AWS it exposes the Lambda runtime entrypoint
 - Standard-library baseline:
   - local helper entrypoints use only Python standard library modules
   - HTTP and JSON handling for Slack, Discord, and Jira use standard-library modules
@@ -48,6 +52,7 @@ Describe the Python-specific implementation shape of `triage-handler` while pres
 ## Locked decisions
 
 - Python is one of the two official handler implementation languages.
+- The Python implementation represents the deployed receiver service, not just an internal callback.
 - The documented Python path uses standard-library modules for local helper entrypoints and outbound integrations.
 - Python does not define a second official `triage` CLI.
 

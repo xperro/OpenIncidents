@@ -47,6 +47,7 @@ Define the product framing for OpenIncidents before implementation starts.
 - Template contract:
   - Go and Python are the two official handler implementation runtimes for the MVP
   - the template target remains `triage-handler` regardless of implementation language
+  - `triage-handler` is deployed as a serverless receiver service, not just as an isolated handler function
 - CLI implementation contract:
   - the official implementation target for `triage` is Python
   - the CLI uses Python standard-library modules only
@@ -71,6 +72,7 @@ Define the product framing for OpenIncidents before implementation starts.
 - Slack, Discord, Jira, OpenAI, and Anthropic are the named MVP integrations in the current phase.
 - Notification routing is configurable to Slack, Discord, or both, while Jira remains escalation-oriented.
 - `triage-handler` is the shared runtime contract name rather than a label for a single language implementation.
+- `triage-handler` represents the serverless service that receives pushed log events and processes them.
 - `triage` has one official CLI implementation target in Python using only the standard library.
 - Go and Python remain the two official handler/runtime implementation paths.
 - The product is planned as an open-source toolkit with clear boundaries between stable core contracts and pluggable edges.

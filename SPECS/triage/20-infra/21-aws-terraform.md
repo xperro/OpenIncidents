@@ -3,7 +3,7 @@ Date: 2026-03-08
 
 ## Intent
 
-Define the AWS deployment contract for routing CloudWatch Logs into the OpenIncidents runtime.
+Define the AWS deployment contract for routing CloudWatch Logs into the OpenIncidents receiver service runtime.
 
 ## Scope
 
@@ -24,16 +24,20 @@ Define the AWS deployment contract for routing CloudWatch Logs into the OpenInci
 - Define the Terraform variables and outputs that other components depend on.
 - State the default log filter concepts for CloudWatch Logs subscriptions.
 - Define the packaging handoff between `triage` and Terraform.
+- Define how the log subscription invokes the deployed Lambda receiver service entrypoint.
 - Link back to the canonical IAM and security policy instead of re-stating it here.
 
 ## Contracts
 
 - MVP resource set:
-  - Lambda function for `triage-handler`
+  - Lambda receiver service for `triage-handler`
   - Lambda execution role
   - CloudWatch Logs subscription filter
   - `aws_lambda_permission` for log delivery
   - zip deployment artifact produced by `triage`
+- Delivery contract:
+  - each subscribed log batch invokes the Lambda receiver service entrypoint
+  - `triage-handler` is responsible for receiving, decoding, and processing delivered log events
 - Default packaging:
   - `zip` is the default package format for both official handler templates
 - Default filter concepts:

@@ -12,7 +12,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - handler template download
   - infrastructure generation
   - Terraform plan and apply as an official workflow
-  - handler packaging and deployment for the selected cloud
+  - receiver service packaging and deployment for the selected cloud
   - local runtime execution for development and validation
 - Out of scope:
   - cloud authentication flows
@@ -26,6 +26,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 - Generate deterministic config and Terraform inputs.
 - Validate that required local credentials already exist.
 - Package or build the selected handler and hand deployment artifacts to infrastructure workflows.
+- Package or build the selected receiver service implementation and hand deployment artifacts to infrastructure workflows.
 - Run the handler locally against supported development sources.
 - Validate linked repository paths and required local configuration before runtime execution.
 - Print clear next steps after generation or infrastructure actions.
@@ -56,7 +57,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - templates are versioned with the CLI release and extracted locally rather than fetched ad hoc
 - Infrastructure apply contract:
   - `triage infra apply --cloud gcp|aws --runtime go|python --handler-path /abs/path`
-  - `--handler-path` is required when packaging or building the handler for deployment
+  - `--handler-path` is required when packaging or building the receiver service for deployment
   - `--handler-path` must be absolute
 - Credential model:
   - GCP uses local Application Default Credentials
@@ -67,7 +68,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 - Expected generated artifacts:
   - `triage.yaml`
   - cloud-specific Terraform inputs
-  - handler deployment artifacts or references required by the chosen cloud
+  - receiver service deployment artifacts or references required by the chosen cloud
   - a predictable project scaffold for later implementation work
 - Local run prerequisites:
   - `.env` may be used for local development secrets and must stay untracked
