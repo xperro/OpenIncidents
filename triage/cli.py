@@ -698,12 +698,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scan_parser.add_argument(
         "--source",
-        choices=("gcp-pubsub",),
+        choices=("gcp-pubsub", "gcp-logging"),
         default="gcp-pubsub",
         help="Cloud source for event ingestion.",
     )
     scan_parser.add_argument("--subscription", help="GCP Pub/Sub subscription override.")
     scan_parser.add_argument("--project-id", help="GCP project id override.")
+    scan_parser.add_argument("--log-filter", help="GCP Logging filter when using `--source gcp-logging`.")
+    scan_parser.add_argument(
+        "--log-freshness",
+        default="30m",
+        help="Freshness window for `gcloud logging read` when using `--source gcp-logging`.",
+    )
     scan_parser.add_argument("--limit", type=int, default=50, help="Max messages to pull from source.")
     scan_parser.add_argument("--init-config", action="store_true", help="Create default triage config when missing.")
     scan_parser.add_argument("--provider", choices=("openai", "anthropic", "mock"))
@@ -1496,17 +1502,37 @@ def handle_scan(args, context: Context) -> int:
             raw_payload = handle.read()
     else:
         project_id = args.project_id or ((project or {}).get("gcp") or {}).get("project_id")
-        subscription = args.subscription or ((project or {}).get("gcp") or {}).get("subscription_name")
-        if not project_id or not subscription:
-            raise UserError("Missing GCP `project_id` or `subscription_name` for scan source.")
-        envelopes, pulled_count = fetch_gcp_pubsub_envelopes(
-            context.cwd,
-            project_id=str(project_id),
-            subscription=str(subscription),
-            limit=args.limit,
-            env=env,
-        )
-        raw_payload = json.dumps(envelopes)
+        if not project_id:
+            raise UserError("Missing GCP `project_id` for scan source.")
+        if args.source == "gcp-pubsub":
+            subscription = args.subscription or ((project or {}).get("gcp") or {}).get("subscription_name")
+            if not subscription:
+                raise UserError("Missing GCP `subscription_name` for Pub/Sub scan source.")
+            envelopes, pulled_count = fetch_gcp_pubsub_envelopes(
+                context.cwd,
+                project_id=str(project_id),
+                subscription=str(subscription),
+                limit=args.limit,
+                env=env,
+            )
+            raw_payload = json.dumps(envelopes)
+        elif args.source == "gcp-logging":
+            default_filter = str((((project or {}).get("gcp") or {}).get("log_filter_override") or "")).strip()
+            filter_expr = str(args.log_filter or default_filter or "").strip()
+            if not filter_expr:
+                min_severity = str(args.severity_min or "ERROR").strip().upper()
+                filter_expr = f"severity>={min_severity}"
+            entries, pulled_count = fetch_gcp_logging_entries(
+                context.cwd,
+                project_id=str(project_id),
+                log_filter=filter_expr,
+                freshness=str(args.log_freshness or "30m"),
+                limit=args.limit,
+                env=env,
+            )
+            raw_payload = json.dumps(entries)
+        else:
+            raise UserError(f"Unsupported scan source: {args.source}")
 
     prepared = prepare_for_llm(
         raw_payload,
@@ -1841,6 +1867,18 @@ def apply_scan_env_defaults(args, env: dict[str, str]) -> None:
         env_cloud = str(env.get("TRIAGE_SCAN_CLOUD", "")).strip().lower()
         if env_cloud in ("gcp", "aws"):
             args.cloud = env_cloud
+    if args.source == "gcp-pubsub":
+        env_source = str(env.get("TRIAGE_SCAN_SOURCE", "")).strip().lower()
+        if env_source in ("gcp-pubsub", "gcp-logging"):
+            args.source = env_source
+    if not args.log_filter:
+        env_filter = str(env.get("TRIAGE_SCAN_LOG_FILTER", "")).strip()
+        if env_filter:
+            args.log_filter = env_filter
+    if args.log_freshness == "30m":
+        env_freshness = str(env.get("TRIAGE_SCAN_LOG_FRESHNESS", "")).strip()
+        if env_freshness:
+            args.log_freshness = env_freshness
 
 
 def env_bool_true(value: str) -> bool:
@@ -1976,6 +2014,43 @@ def fetch_gcp_pubsub_envelopes(
         normalized_data = ensure_base64_data(data)
         envelopes.append({"message": {"data": normalized_data}})
     return envelopes, len(envelopes)
+
+
+def fetch_gcp_logging_entries(
+    cwd: str,
+    *,
+    project_id: str,
+    log_filter: str,
+    freshness: str,
+    limit: int,
+    env: dict[str, str],
+) -> tuple[list[dict[str, Any]], int]:
+    command = [
+        "gcloud",
+        "logging",
+        "read",
+        log_filter,
+        "--project",
+        project_id,
+        "--limit",
+        str(limit),
+        "--freshness",
+        freshness,
+        "--format=json",
+    ]
+    result = run_subprocess(command, cwd=cwd, env=env)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        raise UserError(f"Failed to read from Cloud Logging: {detail}")
+    raw = result.stdout.strip() or "[]"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise UserError(f"Unexpected Cloud Logging output: {exc}") from exc
+    if not isinstance(payload, list):
+        raise UserError("Unexpected Cloud Logging output: expected a JSON list.")
+    entries = [item for item in payload if isinstance(item, dict)]
+    return entries, len(entries)
 
 
 def ensure_base64_data(value: str) -> str:

@@ -12,10 +12,10 @@
     "analyzed_incidents": 0,
     "notified": true,
     "prepared_incidents": 0,
-    "pulled_messages": 0
+    "pulled_messages": 4
   },
   "model": "gpt-4o-mini",
   "provider": "openai",
   "schema_version": "scan-result.v1",
-  "source": "gcp-pubsub"
+  "source": "gcp-logging"
 }
