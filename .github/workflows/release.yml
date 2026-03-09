@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release, for example v1.0.3"
+        description: "Tag to release, for example v1.0.4"
         required: true
         type: string
 
@@ -70,6 +70,41 @@ jobs:
             dist/release/assets/triage_${{ steps.meta.outputs.version }}_bundle.zip
             dist/release/assets/triage_${{ steps.meta.outputs.version }}_homebrew.rb
             dist/release/assets/triage_${{ steps.meta.outputs.version }}_sha256sums.txt
+
+      - name: Write release summary
+        shell: bash
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          TAP_REPOSITORY: ${{ vars.HOMEBREW_TAP_REPOSITORY }}
+        run: |
+          {
+            echo "## Release assets"
+            echo
+            echo "- Tag: \`${TAG}\`"
+            echo "- GitHub Release: https://github.com/${{ github.repository }}/releases/tag/${TAG}"
+            echo "- Assets: \`triage.pyz\`, \`triage\`, \`triage.cmd\`, \`triage_${VERSION}_bundle.tar.gz\`, \`triage_${VERSION}_bundle.zip\`, \`triage_${VERSION}_homebrew.rb\`, \`triage_${VERSION}_sha256sums.txt\`"
+            echo
+            echo "## Homebrew"
+            echo
+            if [ -n \"${TAP_REPOSITORY}\" ]; then
+              echo "The workflow is configured to publish the Homebrew formula to \`${TAP_REPOSITORY}\` at \`Formula/triage.rb\`."
+              echo
+              echo "Install the latest Homebrew formula:"
+              echo '```bash'
+              echo "brew tap ${TAP_REPOSITORY}"
+              echo "brew install ${TAP_REPOSITORY}/triage"
+              echo '```'
+              echo
+              echo "Upgrade an existing Homebrew install:"
+              echo '```bash'
+              echo "brew update"
+              echo "brew upgrade ${TAP_REPOSITORY}/triage"
+              echo '```'
+            else
+              echo "Homebrew publication is not configured because \`HOMEBREW_TAP_REPOSITORY\` is empty."
+            fi
+          } >> \"$GITHUB_STEP_SUMMARY\"
 
       - name: Upload release assets for downstream jobs
         uses: actions/upload-artifact@v4
