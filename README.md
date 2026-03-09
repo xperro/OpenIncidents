@@ -130,7 +130,92 @@ This produces:
   - unit tests on Ubuntu, macOS, and Windows
   - a CLI smoke test with `python -m triage --help`
   - release bundle build and extraction checks
-- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v0.1.0`
+- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.0`
+
+## Where Artifacts Are Uploaded
+
+There are two upload targets:
+
+- CI pushes and pull requests upload a temporary Actions artifact named `triage-ci-bundle` in the workflow run.
+- Versioned releases upload downloadable assets to GitHub Releases for this repository:
+  - [github.com/xperro/OpenIncidents/releases](https://github.com/xperro/OpenIncidents/releases)
+
+To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.0`, either by pushing the tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+or by running the workflow manually from GitHub Actions with the `tag` input.
+
+## Download On macOS
+
+Preferred release asset:
+
+- `triage_<version>_bundle.tar.gz`
+
+Browser flow:
+
+1. Open [github.com/xperro/OpenIncidents/releases](https://github.com/xperro/OpenIncidents/releases)
+2. Open the desired release tag
+3. Download `triage_<version>_bundle.tar.gz`
+4. Extract it and run:
+
+```bash
+tar -xzf triage_<version>_bundle.tar.gz
+chmod +x triage
+./triage --help
+```
+
+CLI flow with GitHub CLI:
+
+```bash
+gh release download v1.0.0 \
+  --repo xperro/OpenIncidents \
+  --pattern 'triage_1.0.0_bundle.tar.gz' \
+  --dir ~/Downloads/openincidents
+```
+
+After extraction, you can run either:
+
+- `./triage --help`
+- `python3 triage.pyz --help`
+
+## Download On Windows
+
+Preferred release asset:
+
+- `triage_<version>_bundle.zip`
+
+Browser flow:
+
+1. Open [github.com/xperro/OpenIncidents/releases](https://github.com/xperro/OpenIncidents/releases)
+2. Open the desired release tag
+3. Download `triage_<version>_bundle.zip`
+4. Extract it and run:
+
+```powershell
+Expand-Archive -Path .\triage_<version>_bundle.zip -DestinationPath .\triage-bundle
+cd .\triage-bundle
+.\triage.cmd --help
+py .\triage.pyz --help
+```
+
+CLI flow with GitHub CLI:
+
+```powershell
+gh release download v1.0.0 `
+  --repo xperro/OpenIncidents `
+  --pattern "triage_1.0.0_bundle.zip" `
+  --dir "$env:USERPROFILE\\Downloads\\OpenIncidents"
+```
+
+## Download CI Artifact
+
+If you only need the bundle from a regular push to `main` or `develop`, go to the workflow run in GitHub Actions and download the artifact named `triage-ci-bundle`.
+
+That artifact is useful for internal validation, but the stable end-user download path should be the GitHub Releases page.
 
 ## Notes
 

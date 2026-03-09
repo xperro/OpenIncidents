@@ -28,7 +28,7 @@ IGNORED_SUFFIXES = (".pyc", ".pyo", ".tmp", ".swp")
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--tag", help="Git tag to validate against, for example v0.1.0")
+    parser.add_argument("--tag", help="Git tag to validate against, for example v1.0.0")
     return parser.parse_args(argv)
 
 
