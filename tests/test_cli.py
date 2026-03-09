@@ -299,7 +299,17 @@ class CliTests(unittest.TestCase):
 
     def test_infra_generate_writes_terraform_inputs(self):
         self.complete_bootstrap()
-        save_project_config(self.work_dir, default_project_config())
+        project = default_project_config()
+        project["gcp"]["sinks"] = [
+            {
+                "name": "approve-mrs-dev",
+                "repo_name": "approve-mrs-dev",
+                "description": "Approve MRs service logs.",
+                "exclude_severity_at_or_above": "WARNING",
+                "exclude_repo_name_like": "approve-mrs",
+            }
+        ]
+        save_project_config(self.work_dir, project)
         with mock.patch(
             "triage.cli.validate_cloud",
             return_value=ValidationResult(cloud="gcp", ok=True, checks=["ok"]),
@@ -313,10 +323,12 @@ class CliTests(unittest.TestCase):
         tfvars = os.path.join(payload["infra_dir"], "terraform.tfvars.json")
         with open(tfvars, "r", encoding="utf-8") as handle:
             generated = json.load(handle)
-        self.assertEqual(generated["log_filter"], "severity>=ERROR")
-        self.assertEqual(generated["sink_name"], "triage-dev")
         self.assertEqual(generated["topic_name"], "triage-dev")
         self.assertEqual(generated["subscription_name"], "triage-dev-push")
+        self.assertEqual(generated["sinks"][0]["name"], "approve-mrs-dev")
+        self.assertEqual(generated["sinks"][0]["repo_name"], "approve-mrs-dev")
+        self.assertEqual(generated["sinks"][0]["repo_match_like"], "approve-mrs")
+        self.assertEqual(generated["sinks"][0]["exclusions"][0]["filter"], "severity>=WARNING")
         self.assertEqual(
             generated["container_image"],
             f"us-central1-docker.pkg.dev/my-project/triage/triage-handler:python-dev-{VERSION}-pending",
@@ -368,6 +380,19 @@ class CliTests(unittest.TestCase):
         payload = json.loads(stdout)
         self.assertEqual(payload["returncode"], 0)
         self.assertEqual(payload["stdout_json"]["runtime"], "python")
+        self.assertEqual(
+            payload["stdout_json"]["logging_event"]["textPayload"],
+            "Aprobacion Bitbucket exitosa con credencial #1",
+        )
+        self.assertEqual(
+            payload["stdout_json"]["logging_event"]["resource"]["labels"]["service_name"],
+            "approve-mrs-dev",
+        )
+        self.assertEqual(payload["stdout_json"]["repo_name"], "approve-mrs-dev")
+        self.assertEqual(
+            payload["stdout_json"]["error_message"],
+            "Aprobacion Bitbucket exitosa con credencial #1",
+        )
 
     def test_run_executes_go_template_locally(self):
         if shutil.which("go") is None:
@@ -426,6 +451,19 @@ class CliTests(unittest.TestCase):
         self.assertEqual(payload["returncode"], 0)
         self.assertEqual(payload["stdout_json"]["runtime"], "go")
         self.assertEqual(payload["stdout_json"]["cloud"], "gcp")
+        self.assertEqual(
+            payload["stdout_json"]["logging_event"]["textPayload"],
+            "Aprobacion Bitbucket exitosa con credencial #1",
+        )
+        self.assertEqual(
+            payload["stdout_json"]["logging_event"]["resource"]["labels"]["service_name"],
+            "approve-mrs-dev",
+        )
+        self.assertEqual(payload["stdout_json"]["repo_name"], "approve-mrs-dev")
+        self.assertEqual(
+            payload["stdout_json"]["error_message"],
+            "Aprobacion Bitbucket exitosa con credencial #1",
+        )
 
     def test_package_handler_rejects_wrong_variant(self):
         self.complete_bootstrap()

@@ -16,7 +16,15 @@ func HandlePush(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(writer).Encode(runtime.NewReplaySummary("gcp", "cloud-run-http", payload))
+	_ = json.NewEncoder(writer).Encode(
+		runtime.NewReplaySummary(
+			"gcp",
+			"cloud-run-http",
+			payload,
+			request.URL.Query().Get("repo_name"),
+			request.URL.Query().Get("sink_name"),
+		),
+	)
 }
 
 func Healthz(writer http.ResponseWriter, _ *http.Request) {

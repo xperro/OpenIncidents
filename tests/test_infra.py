@@ -63,6 +63,13 @@ class InfraTests(unittest.TestCase):
         self.assertIn('resource "google_logging_project_sink" "logs"', rendered)
         self.assertIn('resource "google_pubsub_subscription" "push"', rendered)
         self.assertIn('resource "google_artifact_registry_repository" "handler"', rendered)
+        self.assertIn('for_each = local.gcp_sinks', rendered)
+        self.assertIn('name  = "TRIAGE_GCP_SINK_ROUTING"', rendered)
+        self.assertIn('name = var.topic_name', rendered)
+        self.assertIn('topic = google_pubsub_topic.logs.name', rendered)
+        self.assertNotIn('repo_name=${urlencode(each.value.repo_name)}', rendered)
+        self.assertIn('dynamic "exclusions"', rendered)
+        self.assertNotIn('name  = "PORT"', rendered)
 
 
 if __name__ == "__main__":

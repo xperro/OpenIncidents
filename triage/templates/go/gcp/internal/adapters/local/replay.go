@@ -15,5 +15,5 @@ func ReadInput(path string) ([]byte, error) {
 }
 
 func BuildReplaySummary(cloud string, entrypoint string, payload []byte) runtime.ReplaySummary {
-	return runtime.NewReplaySummary(cloud, entrypoint, payload)
+	return runtime.NewReplaySummary(cloud, entrypoint, payload, "", "")
 }

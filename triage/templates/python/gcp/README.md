@@ -10,3 +10,5 @@ The Cloud Run entrypoint uses `Starlette` plus `uvicorn` and exposes:
 
 - `POST /` for Pub/Sub push delivery
 - `GET /healthz` for service health checks
+
+The placeholder replay/output contract preserves the decoded Cloud Logging payload as `logging_event` and adds derived fields such as `repo_name`, `sink_name`, and `error_message` when they can be inferred.

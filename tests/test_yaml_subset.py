@@ -1,6 +1,12 @@
 import unittest
 
-from triage.project import default_project_config, normalize_project_config, render_project_config
+from triage.project import (
+    build_gcp_repo_match_filter,
+    default_project_config,
+    derive_gcp_sinks,
+    normalize_project_config,
+    render_project_config,
+)
 from triage.yaml_subset import load_yaml
 
 
@@ -11,6 +17,7 @@ class YamlSubsetTests(unittest.TestCase):
         self.assertEqual(config["gcp"]["sink_name"], "triage-stg")
         self.assertEqual(config["gcp"]["topic_name"], "triage-stg")
         self.assertEqual(config["gcp"]["subscription_name"], "triage-stg-push")
+        self.assertEqual(config["gcp"]["sinks"], [])
 
     def test_legacy_gcp_defaults_are_migrated_from_env(self):
         loaded = normalize_project_config(
@@ -56,6 +63,35 @@ class YamlSubsetTests(unittest.TestCase):
         self.assertEqual(loaded["llm"]["provider"], "openai")
         self.assertEqual(loaded["repos"][0]["auth"]["token_env"], "GIT_TOKEN")
         self.assertIn("repos:\n  - name: payments-orchestrator", rendered)
+
+    def test_gcp_sinks_round_trip_and_derivation(self):
+        config = default_project_config(cloud="gcp", env="dev")
+        config["gcp"]["sinks"] = [
+            {
+                "name": "approve-mrs-dev",
+                "repo_name": "approve-mrs-dev",
+                "description": "Approve MRs Cloud Run logs.",
+                "exclude_severity_at_or_above": "WARNING",
+                "exclude_repo_name_like": "approve-mrs",
+            }
+        ]
+
+        rendered = render_project_config(config)
+        loaded = normalize_project_config(load_yaml(rendered))
+        sinks = derive_gcp_sinks(loaded)
+
+        self.assertEqual(loaded["gcp"]["sinks"][0]["repo_name"], "approve-mrs-dev")
+        self.assertEqual(sinks[0]["repo_match_like"], "approve-mrs")
+        self.assertEqual(sinks[0]["exclusions"][0]["filter"], "severity>=WARNING")
+        self.assertIn("protoPayload.resourceName", sinks[0]["exclusions"][1]["filter"])
+        self.assertIn("exclude_repo_name_like: approve-mrs", rendered)
+
+    def test_gcp_repo_match_filter_covers_common_fields(self):
+        rendered = build_gcp_repo_match_filter("request-approvals")
+
+        self.assertIn('textPayload =~ ".*request\\\\-approvals.*"', rendered)
+        self.assertIn("resource.labels.service_name", rendered)
+        self.assertIn("protoPayload.authenticationInfo.principalEmail", rendered)
 
 
 if __name__ == "__main__":

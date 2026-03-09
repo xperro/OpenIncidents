@@ -19,7 +19,15 @@ async def healthz(_request: Request) -> JSONResponse:
 
 async def handle_push(request: Request) -> JSONResponse:
     payload = await request.body()
-    return JSONResponse(build_summary("gcp", "cloud-run-http", payload))
+    return JSONResponse(
+        build_summary(
+            "gcp",
+            "cloud-run-http",
+            payload,
+            repo_name=request.query_params.get("repo_name", ""),
+            sink_name=request.query_params.get("sink_name", ""),
+        )
+    )
 
 
 app = Starlette(routes=[Route("/", handle_push, methods=["POST"]), Route("/healthz", healthz)])

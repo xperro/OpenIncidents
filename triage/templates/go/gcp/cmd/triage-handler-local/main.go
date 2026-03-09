@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"triage-handler/internal/runtime"
 )
 
 func main() {
@@ -25,15 +27,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	result := map[string]any{
-		"handler":        "triage-handler",
-		"runtime":        "go",
-		"cloud":          *cloud,
-		"entrypoint":     "cmd/triage-handler-local",
-		"payload_length": len(payload),
-	}
+	summary := runtime.NewReplaySummary(*cloud, "cmd/triage-handler-local", payload, "", "")
 
-	encoded, err := json.Marshal(result)
+	encoded, err := json.Marshal(summary)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		os.Exit(1)

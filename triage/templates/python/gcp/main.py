@@ -9,6 +9,7 @@ import pathlib
 import sys
 
 from adapters.local import read_input
+from service import build_summary
 
 
 def main() -> int:
@@ -18,14 +19,8 @@ def main() -> int:
     args = parser.parse_args()
 
     payload = read_input(args.input)
-    result = {
-        "handler": "triage-handler",
-        "runtime": "python",
-        "cloud": args.cloud,
-        "entrypoint": "main.py",
-        "payload_length": len(payload),
-        "cwd": str(pathlib.Path.cwd()),
-    }
+    result = build_summary(args.cloud, "main.py", payload)
+    result["cwd"] = str(pathlib.Path.cwd())
     sys.stdout.write(json.dumps(result) + "\n")
     return 0
 

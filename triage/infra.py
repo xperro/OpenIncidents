@@ -15,7 +15,7 @@ from .constants import PLACEHOLDER_LAMBDA_PACKAGE, VERSION
 from .errors import UserError
 from .project import (
     derive_aws_filter_pattern,
-    derive_gcp_log_filter,
+    derive_gcp_sinks,
     normalize_env_slug,
     render_json,
     validate_project_config,
@@ -53,10 +53,9 @@ def generate_inputs(
             "project_id": gcp["project_id"],
             "region": gcp["region"],
             "env": project["env"],
-            "sink_name": gcp["sink_name"],
-            "log_filter": derive_gcp_log_filter(project),
             "topic_name": gcp["topic_name"],
             "subscription_name": gcp["subscription_name"],
+            "sinks": derive_gcp_sinks(project),
             "cloud_run_service_name": gcp["cloud_run_service_name"],
             "artifact_registry_repository": gcp["artifact_registry_repository"],
             "container_image": artifact_reference or gcp_placeholder_image_reference(project, runtime),
@@ -330,6 +329,7 @@ data "google_project" "current" {
 locals {
   handler_service_account_id = "triage-handler"
   push_service_account_id    = "triage-push-invoker"
+  gcp_sinks                  = { for sink in var.sinks : sink.name => sink }
 }
 
 resource "google_project_service" "required" {
@@ -387,13 +387,19 @@ resource "google_cloud_run_v2_service" "handler" {
     containers {
       image = var.container_image
 
-      ports {
-        container_port = 8080
+      env {
+        name  = "TRIAGE_GCP_SINK_ROUTING"
+        value = jsonencode([
+          for sink in var.sinks : {
+            sink_name       = sink.name
+            repo_name       = sink.repo_name
+            repo_match_like = sink.repo_match_like
+          }
+        ])
       }
 
-      env {
-        name  = "PORT"
-        value = "8080"
+      ports {
+        container_port = 8080
       }
     }
   }
@@ -420,22 +426,33 @@ resource "google_pubsub_topic" "logs" {
 }
 
 resource "google_logging_project_sink" "logs" {
-  depends_on = [
-    google_project_service.required["logging.googleapis.com"],
-    google_pubsub_topic.logs,
-  ]
+  depends_on = [google_project_service.required["logging.googleapis.com"]]
+
+  for_each = local.gcp_sinks
 
   project                = var.project_id
-  name                   = var.sink_name
+  name                   = each.value.name
+  description            = each.value.description
   destination            = "pubsub.googleapis.com/${google_pubsub_topic.logs.id}"
-  filter                 = var.log_filter
+  filter                 = trimspace(each.value.filter) != "" ? each.value.filter : null
   unique_writer_identity = true
+
+  dynamic "exclusions" {
+    for_each = each.value.exclusions
+    content {
+      name        = exclusions.value.name
+      description = exclusions.value.description
+      filter      = exclusions.value.filter
+    }
+  }
 }
 
 resource "google_pubsub_topic_iam_member" "sink_writer" {
+  for_each = local.gcp_sinks
+
   topic  = google_pubsub_topic.logs.name
   role   = "roles/pubsub.publisher"
-  member = google_logging_project_sink.logs.writer_identity
+  member = google_logging_project_sink.logs[each.key].writer_identity
 }
 
 resource "google_pubsub_subscription" "push" {
@@ -464,8 +481,8 @@ output "pubsub_subscription" {
   value = google_pubsub_subscription.push.name
 }
 
-output "sink_writer_identity" {
-  value = google_logging_project_sink.logs.writer_identity
+output "sink_writer_identities" {
+  value = { for key, sink in google_logging_project_sink.logs : key => sink.writer_identity }
 }
 
 output "cloud_run_url" {
@@ -480,8 +497,19 @@ output "deployment_summary" {
   value = {
     cloud           = "gcp"
     runtime         = var.runtime
-    log_filter      = var.log_filter
     container_image = var.container_image
+    sink_count      = length(var.sinks)
+    pubsub_topic    = var.topic_name
+    pubsub_subscription = var.subscription_name
+    routing_mode    = "shared_topic_shared_subscription"
+    sinks = {
+      for sink in var.sinks : sink.name => {
+        repo_name         = sink.repo_name
+        repo_match_like   = sink.repo_match_like
+        filter            = sink.filter
+        exclusion_names   = [for exclusion in sink.exclusions : exclusion.name]
+      }
+    }
   }
 }
 """
@@ -510,19 +538,57 @@ output "deployment_summary" {
 
 def terraform_variables(cloud: str) -> str:
     if cloud == "gcp":
-        names = (
-            "project_id",
-            "region",
-            "env",
-            "sink_name",
-            "log_filter",
-            "topic_name",
-            "subscription_name",
-            "cloud_run_service_name",
-            "artifact_registry_repository",
-            "container_image",
-            "runtime",
-        )
+        return """variable "project_id" {
+  type = string
+}
+
+variable "region" {
+  type = string
+}
+
+variable "env" {
+  type = string
+}
+
+variable "topic_name" {
+  type = string
+}
+
+variable "subscription_name" {
+  type = string
+}
+
+variable "sinks" {
+  type = list(object({
+    name              = string
+    repo_name         = string
+    repo_match_like   = string
+    description       = string
+    filter            = string
+    exclusions = list(object({
+      name        = string
+      description = string
+      filter      = string
+    }))
+  }))
+}
+
+variable "cloud_run_service_name" {
+  type = string
+}
+
+variable "artifact_registry_repository" {
+  type = string
+}
+
+variable "container_image" {
+  type = string
+}
+
+variable "runtime" {
+  type = string
+}
+"""
     else:
         names = (
             "region",

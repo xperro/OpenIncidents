@@ -109,10 +109,12 @@ For the GCP path, the scaffold now derives default resource names from `env`:
 - `gcp.sink_name`: `triage-<env>`
 - `gcp.topic_name`: `triage-<env>`
 - `gcp.subscription_name`: `triage-<env>-push`
+- `gcp.sinks`: optional preferred list for multi-sink routing; sinks share the project topic/subscription and carry repo-routing metadata into the handler runtime
 
 Example:
 
 - `env: dev` => `triage-dev`, `triage-dev`, `triage-dev-push`
+- `gcp.sinks[].name: approve-mrs-dev` => dedicated sink name, shared topic `triage-dev`, shared subscription `triage-dev-push`
 
 ### 4. Download an official handler template
 
@@ -134,7 +136,8 @@ For GCP, `triage infra apply` now:
 
 - bootstraps Artifact Registry through Terraform
 - builds and publishes the selected handler as a container image with `gcloud builds submit`
-- runs the final Terraform apply against Cloud Run, Pub/Sub push, and Cloud Logging sink resources
+- runs the final Terraform apply against Cloud Run, a shared Pub/Sub push path, and Cloud Logging sink resources
+- injects sink routing metadata into Cloud Run so the handler can recover `repo_name`, `sink_name`, a clearer `error_message`, and the decoded `logging_event` from the pushed log event
 
 ### 5. Smoke test a handler locally
 
@@ -162,6 +165,8 @@ cat /absolute/path/to/triage-handler/sample-events/gcp-pubsub.json | \
 
 Go local replay uses the same `triage run` command shape, but the downloaded Go GCP template expects Go `1.26.1` locally.
 
+For GCP, the placeholder handler replay now returns the decoded `logging_event` plus enriched fields such as `repo_name`, `sink_name`, and `error_message`.
+
 ### 6. Build release assets locally
 
 ```bash
@@ -182,7 +187,7 @@ This produces:
   - unit tests on Ubuntu, macOS, and Windows
   - a CLI smoke test with `python -m triage --help`
   - release bundle build and extraction checks
-- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.5`
+- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.6`
 
 ## Where Artifacts Are Uploaded
 
@@ -192,11 +197,11 @@ There are two upload targets:
 - Versioned releases upload downloadable assets to GitHub Releases for this repository:
   - [github.com/xperro/OpenIncidents/releases](https://github.com/xperro/OpenIncidents/releases)
 
-To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.5`, either by pushing the tag:
+To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.6`, either by pushing the tag:
 
 ```bash
-git tag v1.0.5
-git push origin v1.0.5
+git tag v1.0.6
+git push origin v1.0.6
 ```
 
 or by running the workflow manually from GitHub Actions with the `tag` input.
@@ -223,9 +228,9 @@ chmod +x triage
 CLI flow with GitHub CLI:
 
 ```bash
-gh release download v1.0.5 \
+gh release download v1.0.6 \
   --repo xperro/OpenIncidents \
-  --pattern 'triage_1.0.5_bundle.tar.gz' \
+  --pattern 'triage_1.0.6_bundle.tar.gz' \
   --dir ~/Downloads/openincidents
 ```
 
@@ -257,9 +262,9 @@ py .\triage.pyz --help
 CLI flow with GitHub CLI:
 
 ```powershell
-gh release download v1.0.5 `
+gh release download v1.0.6 `
   --repo xperro/OpenIncidents `
-  --pattern "triage_1.0.5_bundle.zip" `
+  --pattern "triage_1.0.6_bundle.zip" `
   --dir "$env:USERPROFILE\\Downloads\\OpenIncidents"
 ```
 

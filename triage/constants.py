@@ -1,6 +1,6 @@
 """Shared constants for the ``triage`` CLI."""
 
-VERSION = "1.0.5"
+VERSION = "1.0.6"
 SCHEMA_VERSION = 1
 
 VALID_CLOUDS = ("gcp", "aws")
@@ -36,6 +36,7 @@ DEFAULT_GCP = {
     "cloud_run_service_name": "triage-handler",
     "artifact_registry_repository": "triage",
     "log_filter_override": "",
+    "sinks": [],
 }
 
 DEFAULT_AWS = {
@@ -106,6 +107,15 @@ KEY_ORDERS = {
         "cloud_run_service_name",
         "artifact_registry_repository",
         "log_filter_override",
+        "sinks",
+    ),
+    "gcp.sinks": (
+        "name",
+        "repo_name",
+        "description",
+        "filter",
+        "exclude_severity_at_or_above",
+        "exclude_repo_name_like",
     ),
     "aws": (
         "region",

@@ -63,6 +63,13 @@ gcp:
   cloud_run_service_name: triage-handler
   artifact_registry_repository: triage
   log_filter_override: ""
+  sinks:
+    - name: approve-mrs-dev
+      repo_name: approve-mrs-dev
+      description: Low-severity operational logs for approve-mrs.
+      filter: resource.type="cloud_run_revision"
+      exclude_severity_at_or_above: WARNING
+      exclude_repo_name_like: approve-mrs
 
 aws:
   region: us-east-1
@@ -129,6 +136,7 @@ integrations:
   - `triage init` and the local CLI state must be complete before `template download`, `infra generate`, `infra plan`, `infra apply`, or `run` may execute
   - exactly one cloud path is active per deployment because `cloud` selects either `gcp` or `aws`
   - the selected cloud block must be complete for `infra generate`, `infra plan`, and `infra apply`
+  - when `gcp.sinks` is present and non-empty, it becomes the canonical GCP export definition and legacy single-sink fields become compatibility-only defaults
   - `policy.severity_min` follows the normalized GCP severity scale documented in the official [Google Cloud LogSeverity reference](https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.type#logseverity)
   - `policy.jira_min_severity` follows the same normalized severity scale and defaults to `CRITICAL`
   - `integrations.jira.issue_type` defaults to `Bug`
@@ -143,6 +151,11 @@ integrations:
 - Filter derivation rules:
   - GCP derives `log_filter` as `severity>=X` from `policy.severity_min` unless `gcp.log_filter_override` is set
   - GCP default resource names derive from `env` as `triage-<env>` for `sink_name` and `topic_name`, and `triage-<env>-push` for `subscription_name`
+  - `gcp.sinks[]` items define multiple Cloud Logging sinks that share the top-level `gcp.topic_name` and `gcp.subscription_name`
+  - `gcp.sinks[].exclude_severity_at_or_above` expands into a Cloud Logging sink exclusion using `severity>=X`
+  - `gcp.sinks[].exclude_repo_name_like` expands into a Cloud Logging sink exclusion that rejects entries whose common log fields do not contain the configured repo-like token
+  - the deployed GCP handler receives sink routing metadata from infrastructure and uses it to infer `repo_name`, `sink_name`, and a clearer `error_message` from the pushed log payload
+  - the decoded Cloud Logging payload remains available to the runtime contract as `logging_event`; the derived fields are additive rather than a replacement for the raw event
   - AWS `json` derives `filter_pattern` from the configured `severity_field` unless `aws.filter_pattern_override` is set
   - AWS `space_delimited` derives `filter_pattern` from `severity_word_position` unless `aws.filter_pattern_override` is set
   - AWS `text` uses a broad subscription and applies severity filtering in the runtime unless `aws.filter_pattern_override` is set

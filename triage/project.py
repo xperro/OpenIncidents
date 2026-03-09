@@ -168,6 +168,69 @@ def apply_gcp_resource_defaults(config: dict[str, Any], raw_data: dict[str, Any]
             gcp[key] = value
 
 
+def normalize_gcp_sink_resource_name(value: Any) -> str:
+    slug = re.sub(r"[^a-z0-9-]+", "-", str(value or "").strip().lower()).strip("-")
+    return slug or "triage-sink"
+
+
+def normalize_gcp_exclusion_name(value: Any) -> str:
+    text = re.sub(r"[^A-Za-z0-9_.-]+", "-", str(value or "").strip()).strip("-")
+    if not text:
+        return "default-exclusion"
+    if not text[0].isalnum():
+        text = f"x{text}"
+    return text[:100]
+
+
+def escape_gcp_log_filter_regex(value: str) -> str:
+    escaped = re.escape(str(value or "").strip())
+    return escaped.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def build_gcp_repo_match_filter(value: str) -> str:
+    regex = escape_gcp_log_filter_regex(value)
+    if not regex:
+        return ""
+    pattern = f".*{regex}.*"
+    fields = (
+        "logName",
+        "textPayload",
+        "jsonPayload.message",
+        "jsonPayload.repo_name",
+        "jsonPayload.repository",
+        'labels."run.googleapis.com/service_name"',
+        "resource.labels.service_name",
+        "resource.labels.revision_name",
+        "protoPayload.resourceName",
+        "protoPayload.authenticationInfo.principalEmail",
+    )
+    return " OR ".join(f'{field} =~ "{pattern}"' for field in fields)
+
+
+def derive_gcp_sink_exclusions(sink: dict[str, Any]) -> list[dict[str, str]]:
+    exclusions = []
+    severity = str(sink.get("exclude_severity_at_or_above") or "").strip().upper()
+    if severity:
+        exclusions.append(
+            {
+                "name": normalize_gcp_exclusion_name(f"{sink.get('name', 'sink')}-severity"),
+                "description": f"Exclude {severity} and higher severity entries.",
+                "filter": f"severity>={severity}",
+            }
+        )
+    repo_like = str(sink.get("exclude_repo_name_like") or "").strip()
+    repo_filter = build_gcp_repo_match_filter(repo_like)
+    if repo_filter:
+        exclusions.append(
+            {
+                "name": normalize_gcp_exclusion_name(f"{sink.get('name', 'sink')}-repo-mismatch"),
+                "description": f"Exclude entries that do not mention `{repo_like}`.",
+                "filter": f"NOT ({repo_filter})",
+            }
+        )
+    return exclusions
+
+
 def normalize_project_config(data: dict[str, Any] | None) -> dict[str, Any]:
     env = (data or {}).get("env", "dev")
     config = default_project_config(env=env)
@@ -334,17 +397,41 @@ def validate_project_config(project: dict[str, Any], cloud: str) -> list[str]:
         if not llm.get("api_key_env"):
             errors.append("`llm.api_key_env` is required when `llm.provider` is not `none`.")
     if cloud == "gcp":
+        gcp = project.get("gcp", {})
         for field in (
             "project_id",
             "region",
-            "sink_name",
-            "topic_name",
-            "subscription_name",
             "cloud_run_service_name",
             "artifact_registry_repository",
         ):
-            if not project.get("gcp", {}).get(field):
+            if not gcp.get(field):
                 errors.append(f"`gcp.{field}` is required.")
+        sinks = gcp.get("sinks") or []
+        if not isinstance(sinks, list):
+            errors.append("`gcp.sinks` must be a list when present.")
+        elif sinks:
+            names = set()
+            for index, sink in enumerate(sinks):
+                prefix = f"`gcp.sinks[{index}]`"
+                if not isinstance(sink, dict):
+                    errors.append(f"{prefix} must be an object.")
+                    continue
+                for field in ("name", "repo_name"):
+                    if not str(sink.get(field) or "").strip():
+                        errors.append(f"{prefix}.{field} is required.")
+                name = normalize_gcp_sink_resource_name(sink.get("name"))
+                if name in names:
+                    errors.append(f"{prefix}.name must be unique after normalization.")
+                names.add(name)
+                severity = str(sink.get("exclude_severity_at_or_above") or "").strip().upper()
+                if severity and severity not in VALID_SEVERITIES:
+                    errors.append(
+                        f"{prefix}.exclude_severity_at_or_above has an invalid severity."
+                    )
+        else:
+            for field in ("sink_name", "topic_name", "subscription_name"):
+                if not gcp.get(field):
+                    errors.append(f"`gcp.{field}` is required.")
     if cloud == "aws":
         aws = project.get("aws", {})
         for field in ("region", "log_group_name", "lambda_name", "package_format", "filter_name", "log_format"):
@@ -365,6 +452,39 @@ def derive_gcp_log_filter(project: dict[str, Any]) -> str:
         return override
     severity = project.get("policy", {}).get("severity_min", "ERROR")
     return f"severity>={severity}"
+
+
+def derive_gcp_sinks(project: dict[str, Any]) -> list[dict[str, Any]]:
+    gcp = project.get("gcp", {})
+    configured = gcp.get("sinks") or []
+    if configured:
+        resolved = []
+        for sink in configured:
+            name = normalize_gcp_sink_resource_name(sink.get("name"))
+            repo_name = str(sink.get("repo_name") or "").strip()
+            repo_match_like = str(sink.get("exclude_repo_name_like") or "").strip() or repo_name
+            resolved.append(
+                {
+                    "name": name,
+                    "repo_name": repo_name,
+                    "repo_match_like": repo_match_like,
+                    "description": str(sink.get("description") or "").strip()
+                    or f"OpenIncidents export for {name}.",
+                    "filter": str(sink.get("filter") or "").strip(),
+                    "exclusions": derive_gcp_sink_exclusions(sink),
+                }
+            )
+        return resolved
+    return [
+        {
+            "name": gcp["sink_name"],
+            "repo_name": gcp["cloud_run_service_name"],
+            "repo_match_like": gcp["cloud_run_service_name"],
+            "description": f"OpenIncidents export for {gcp['cloud_run_service_name']}.",
+            "filter": derive_gcp_log_filter(project),
+            "exclusions": [],
+        }
+    ]
 
 
 def severities_at_or_above(minimum: str) -> list[str]:

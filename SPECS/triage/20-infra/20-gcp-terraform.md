@@ -43,6 +43,7 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
 - Delivery contract:
   - each exported log event is pushed from Pub/Sub to the HTTP endpoint exposed by the Cloud Run receiver service
   - `triage-handler` is responsible for receiving, decoding, and processing those pushed events
+  - infra injects sink-routing metadata into the Cloud Run runtime so the handler can map a pushed log entry back to `repo_name` and `sink_name` while still preserving the decoded Cloud Logging payload as `logging_event`
 - Default log filter:
   - `severity_min` maps to a Cloud Logging filter in the form `severity>=X`
   - supported threshold values are `DEBUG`, `INFO`, `NOTICE`, `WARNING`, `ERROR`, `CRITICAL`, `ALERT`, and `EMERGENCY`
@@ -57,10 +58,9 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
   - `project_id`
   - `region`
   - `env`
-  - `sink_name`
-  - `log_filter`
   - `topic_name`
   - `subscription_name`
+  - `sinks[]`
   - `cloud_run_service_name`
   - `artifact_registry_repository`
   - `container_image`
@@ -69,10 +69,11 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
   - `topic_name` defaults to `triage-<env>`
   - `subscription_name` defaults to `triage-<env>-push`
   - when `env: dev`, the documented default names are `triage-dev`, `triage-dev`, and `triage-dev-push`
+  - when `gcp.sinks[]` is present, sink resources stay distinct but they share the top-level topic and push subscription
 - Core Terraform outputs:
   - `pubsub_topic`
   - `pubsub_subscription`
-  - `sink_writer_identity`
+  - `sink_writer_identities`
   - `cloud_run_url`
   - `artifact_registry_repository`
 
@@ -88,7 +89,10 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
 
 - The GCP path is documented as Cloud Logging sink to Pub/Sub to Cloud Run.
 - Pub/Sub delivery into Cloud Run is push-based in the canonical design.
-- The sink writer identity must be surfaced as an output because downstream permissions depend on it.
+- Multiple GCP sinks share one Pub/Sub topic and one push subscription to keep the queue topology simple.
+- Cloud Run receives sink-routing metadata through runtime environment configuration so it can recover `repo_name`, `sink_name`, and a clear event/error message from each pushed log entry.
+- The decoded Cloud Logging payload remains available to the runtime contract as `logging_event`; infra only adds routing metadata, it does not mutate the exported log entry body.
+- Sink writer identities must be surfaced as outputs because downstream permissions depend on them.
 - GCP filter derivation starts from `policy.severity_min` unless `log_filter_override` is set.
 - Secret handling stays at the environment-variable level for the current MVP documentation, with stronger secret-store guidance tracked separately.
 - GCP resource detail belongs here, not in runtime or governance documents.

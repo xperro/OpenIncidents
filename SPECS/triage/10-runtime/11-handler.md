@@ -67,6 +67,10 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
 - Integration handoff contract:
   - runtime produces incident data with summary, severity, service, env, counts, links, and optional LLM output
   - Slack, Discord, and Jira formatting rules live in [../30-integrations/32-slack-jira.md](../30-integrations/32-slack-jira.md)
+- GCP receiver debug contract:
+  - the GCP template decodes the Pub/Sub envelope into the exported Cloud Logging payload before downstream handling
+  - the runtime preserves that decoded payload as `logging_event` in the placeholder replay/output contract
+  - the runtime may enrich the decoded event with derived fields such as `repo_name`, `sink_name`, and `error_message`, but it does not replace the raw decoded logging payload
 - Template minimum contract:
   - load config from `triage.yaml` plus referenced environment variables
   - normalize source payloads to the same internal representation across Go and Python
