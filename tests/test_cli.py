@@ -42,6 +42,12 @@ class CliTests(unittest.TestCase):
                 "LOCALAPPDATA": self.home_dir,
                 "GOTELEMETRY": "off",
                 "GOTOOLCHAIN": "local",
+                "TRIAGE_REPO_URLS": "",
+                "TRIAGE_LLM_COST_PROFILE": "",
+                "TRIAGE_LLM_MODEL": "",
+                "TRIAGE_OPENAI_MODEL": "",
+                "TRIAGE_ANTHROPIC_MODEL": "",
+                "TRIAGE_LANGUAGE": "",
             },
             clear=False,
         )

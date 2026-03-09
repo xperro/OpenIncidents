@@ -1425,10 +1425,15 @@ def parse_repo_urls_from_env(raw_value: str) -> list[str]:
     if raw.startswith("["):
         try:
             parsed = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise UserError(f"Repository env array must be valid JSON: {exc}") from exc
+        except json.JSONDecodeError:
+            # Be permissive with malformed list-like values from CI/host envs.
+            text = raw.strip().strip("[]")
+            chunks = [piece.strip().strip("'\"") for piece in text.replace("\n", ",").split(",")]
+            return [item for item in chunks if item]
         if not isinstance(parsed, list):
-            raise UserError("Repository env value must be a JSON array of repo URLs.")
+            text = raw.strip().strip("[]")
+            chunks = [piece.strip().strip("'\"") for piece in text.replace("\n", ",").split(",")]
+            return [item for item in chunks if item]
         return [str(item).strip() for item in parsed if str(item).strip()]
     chunks = [piece.strip() for piece in raw.replace("\n", ",").split(",")]
     return [item for item in chunks if item]
