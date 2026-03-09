@@ -11,9 +11,10 @@ Define the canonical CI and release automation path for publishing the `triage` 
   - GitHub Actions CI validation for the CLI
   - release-time packaging of the Python CLI into a portable bundle
   - GitHub Release asset publication
+  - Homebrew publication for macOS through a configured tap repository
   - post-release smoke validation of published assets
 - Out of scope:
-  - package manager publication such as `pip`, Homebrew, Scoop, or `pipx`
+  - package manager publication such as `pip`, Scoop, or `pipx`
   - cloud deployment workflows for generated projects
   - handler runtime release automation
 
@@ -55,6 +56,14 @@ Define the canonical CI and release automation path for publishing the `triage` 
   - a GitHub Release must publish a Unix-friendly archive named `triage_<version>_bundle.tar.gz`
   - a GitHub Release must publish a Windows-friendly archive named `triage_<version>_bundle.zip`
   - a GitHub Release must publish a checksum manifest named `triage_<version>_sha256sums.txt`
+  - a GitHub Release must publish a Homebrew formula asset named `triage_<version>_homebrew.rb`
+- Homebrew publication contract:
+  - macOS distribution may additionally be published through a Homebrew tap
+  - the release build must generate a formula that installs `triage.pyz` and exposes a `triage` launcher through Homebrew
+  - the formula must reference the tagged GitHub Release tarball and its SHA-256 digest
+  - GitHub Actions may publish the formula to a tap repository only when the tap repository and token are configured explicitly
+  - the canonical workflow inputs are a repository variable named `HOMEBREW_TAP_REPOSITORY` and a secret named `HOMEBREW_TAP_TOKEN`
+  - the canonical tap target path is `Formula/triage.rb`
 - Version contract:
   - the Git tag version and the CLI version embedded in the source must match for an official release
   - release automation must fail fast when the source version and tag disagree
@@ -86,6 +95,6 @@ Define the canonical CI and release automation path for publishing the `triage` 
 
 ## Deferred items
 
-- Homebrew, Scoop, or `pipx` installation channels
+- Scoop or `pipx` installation channels
 - Signed release assets
 - Automated changelog generation

@@ -22,6 +22,8 @@ class ReleaseBuilderTests(unittest.TestCase):
                     str(REPO_ROOT / "scripts" / "build_release.py"),
                     "--output-dir",
                     temp_dir,
+                    "--repository",
+                    "xperro/OpenIncidents",
                 ],
                 check=False,
                 capture_output=True,
@@ -35,6 +37,9 @@ class ReleaseBuilderTests(unittest.TestCase):
             self.assertTrue((assets_dir / "triage.pyz").exists())
             self.assertTrue((assets_dir / "triage").exists())
             self.assertTrue((assets_dir / "triage.cmd").exists())
+            self.assertTrue(
+                (assets_dir / f"triage_{manifest['version']}_homebrew.rb").exists()
+            )
 
             help_result = subprocess.run(
                 [sys.executable, str(assets_dir / "triage.pyz"), "--help"],
@@ -63,6 +68,13 @@ class ReleaseBuilderTests(unittest.TestCase):
             self.assertIn("triage/templates/python/gcp/main.py", names)
             self.assertIn("triage/templates/go/aws/go.mod", names)
 
+            formula = (assets_dir / f"triage_{manifest['version']}_homebrew.rb").read_text(
+                encoding="utf-8"
+            )
+            self.assertIn("class Triage < Formula", formula)
+            self.assertIn(f"triage_{manifest['version']}_bundle.tar.gz", formula)
+            self.assertIn('depends_on "python"', formula)
+
     def test_build_release_rejects_tag_version_mismatch(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             result = subprocess.run(
@@ -73,6 +85,8 @@ class ReleaseBuilderTests(unittest.TestCase):
                     temp_dir,
                     "--tag",
                     "v9.9.9",
+                    "--repository",
+                    "xperro/OpenIncidents",
                 ],
                 check=False,
                 capture_output=True,

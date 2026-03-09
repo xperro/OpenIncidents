@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Tag to release, for example v1.0.1"
+        description: "Tag to release, for example v1.0.2"
         required: true
         type: string
 
@@ -49,7 +49,7 @@ jobs:
         run: python -m unittest discover -s tests -v
 
       - name: Build release assets
-        run: python scripts/build_release.py --tag "${{ steps.meta.outputs.tag }}" --output-dir dist/release
+        run: python scripts/build_release.py --tag "${{ steps.meta.outputs.tag }}" --repository "${{ github.repository }}" --output-dir dist/release
 
       - name: Smoke test extracted Unix bundle
         run: |
@@ -68,7 +68,56 @@ jobs:
             dist/release/assets/triage.cmd
             dist/release/assets/triage_${{ steps.meta.outputs.version }}_bundle.tar.gz
             dist/release/assets/triage_${{ steps.meta.outputs.version }}_bundle.zip
+            dist/release/assets/triage_${{ steps.meta.outputs.version }}_homebrew.rb
             dist/release/assets/triage_${{ steps.meta.outputs.version }}_sha256sums.txt
+
+      - name: Upload release assets for downstream jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: dist/release/assets/
+
+  publish-homebrew:
+    name: Publish Homebrew formula
+    needs:
+      - build-release
+      - validate-release
+    if: ${{ vars.HOMEBREW_TAP_REPOSITORY != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download built release assets
+        uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist/release/assets
+
+      - name: Checkout Homebrew tap
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ vars.HOMEBREW_TAP_REPOSITORY }}
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update formula in tap
+        shell: bash
+        run: |
+          mkdir -p homebrew-tap/Formula
+          cp "dist/release/assets/triage_${{ needs.build-release.outputs.version }}_homebrew.rb" "homebrew-tap/Formula/triage.rb"
+
+      - name: Commit and push Homebrew formula
+        shell: bash
+        working-directory: homebrew-tap
+        run: |
+          if git diff --quiet -- Formula/triage.rb; then
+            echo "Homebrew formula already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/triage.rb
+          git commit -m "triage v${{ needs.build-release.outputs.version }}"
+          git push origin HEAD
 
   validate-release:
     name: Validate published assets (${{ matrix.os }})

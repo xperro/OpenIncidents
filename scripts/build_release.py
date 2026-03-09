@@ -28,7 +28,11 @@ IGNORED_SUFFIXES = (".pyc", ".pyo", ".tmp", ".swp")
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--tag", help="Git tag to validate against, for example v1.0.1")
+    parser.add_argument("--tag", help="Git tag to validate against, for example v1.0.2")
+    parser.add_argument(
+        "--repository",
+        help="GitHub repository slug in owner/name form. Defaults to GITHUB_REPOSITORY or origin remote.",
+    )
     return parser.parse_args(argv)
 
 
@@ -52,6 +56,33 @@ def normalize_version(tag: str | None, version: str) -> str:
             f"error: release tag version `{tag_version}` does not match source version `{version}`."
         )
     return tag_version
+
+
+def resolve_repository_slug(explicit_repository: str | None) -> str:
+    if explicit_repository:
+        return explicit_repository
+    from_env = os.environ.get("GITHUB_REPOSITORY")
+    if from_env:
+        return from_env
+    git_path = shutil.which("git")
+    if git_path:
+        import subprocess
+
+        result = subprocess.run(
+            [git_path, "config", "--get", "remote.origin.url"],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+        )
+        remote = result.stdout.strip()
+        if remote.startswith("git@github.com:") and remote.endswith(".git"):
+            return remote[len("git@github.com:") : -len(".git")]
+        if remote.startswith("https://github.com/") and remote.endswith(".git"):
+            return remote[len("https://github.com/") : -len(".git")]
+    raise SystemExit(
+        "error: unable to resolve GitHub repository slug; pass --repository owner/name."
+    )
 
 
 def should_skip(path: pathlib.Path) -> bool:
@@ -124,7 +155,41 @@ def write_checksums(assets: list[pathlib.Path], target_path: pathlib.Path) -> No
     target_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def build_release(output_dir: pathlib.Path, tag: str | None) -> dict[str, object]:
+def render_homebrew_formula(
+    repository: str,
+    version: str,
+    tarball_name: str,
+    tarball_sha256: str,
+) -> str:
+    homepage = f"https://github.com/{repository}"
+    tarball_url = f"{homepage}/releases/download/v{version}/{tarball_name}"
+    return f"""class Triage < Formula
+  desc "OpenIncidents CLI"
+  homepage "{homepage}"
+  url "{tarball_url}"
+  sha256 "{tarball_sha256}"
+  depends_on "python"
+
+  def install
+    libexec.install "triage.pyz"
+    (bin/"triage").write <<~SH
+      #!/bin/sh
+      exec "#{{Formula["python"].opt_bin}}/python3" "#{{libexec}}/triage.pyz" "$@"
+    SH
+  end
+
+  test do
+    assert_match "usage: triage", shell_output("#{{bin}}/triage --help")
+  end
+end
+"""
+
+
+def build_release(
+    output_dir: pathlib.Path,
+    tag: str | None,
+    repository: str,
+) -> dict[str, object]:
     version = normalize_version(tag, load_version())
     assets_dir = output_dir / "assets"
     bundle_root = output_dir / "bundle"
@@ -146,9 +211,19 @@ def build_release(output_dir: pathlib.Path, tag: str | None) -> dict[str, object
     make_executable(bundle_root / "triage")
 
     tar_path, zip_path = build_archives(bundle_root, assets_dir, version)
+    homebrew_formula_path = assets_dir / f"triage_{version}_homebrew.rb"
+    homebrew_formula_path.write_text(
+        render_homebrew_formula(
+            repository,
+            version,
+            tar_path.name,
+            sha256_file(tar_path),
+        ),
+        encoding="utf-8",
+    )
     checksums_path = assets_dir / f"triage_{version}_sha256sums.txt"
     write_checksums(
-        [pyz_path, unix_launcher, windows_launcher, tar_path, zip_path],
+        [pyz_path, unix_launcher, windows_launcher, tar_path, zip_path, homebrew_formula_path],
         checksums_path,
     )
 
@@ -163,8 +238,10 @@ def build_release(output_dir: pathlib.Path, tag: str | None) -> dict[str, object
             "triage.cmd",
             tar_path.name,
             zip_path.name,
+            homebrew_formula_path.name,
             checksums_path.name,
         ],
+        "repository": repository,
         "templates_included": TEMPLATES_DIR.is_dir(),
     }
     (output_dir / "manifest.json").write_text(
@@ -180,7 +257,11 @@ def main(argv: list[str] | None = None) -> int:
     if output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    manifest = build_release(output_dir, args.tag)
+    manifest = build_release(
+        output_dir,
+        args.tag,
+        resolve_repository_slug(args.repository),
+    )
     sys.stdout.write(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     return 0
 
