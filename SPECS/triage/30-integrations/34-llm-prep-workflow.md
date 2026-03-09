@@ -49,6 +49,7 @@ Define the isolated CLI-first workflow that prepares incidents for LLM analysis,
       - `deep`: high-context defaults (`20`, `4000`, `20`, `3`, `80`)
     - when `--cost-profile` is omitted, `triage llm-prep` may read the default profile from `TRIAGE_LLM_COST_PROFILE` (or the variable selected by `--cost-profile-env-var`)
     - repository scan excludes common non-business files (for example `mvnw`, lockfiles) and prioritizes business paths (`internal/`, `src/`, `service/`, `repository/`, `handler/`)
+    - repo context scoring prioritizes explicit location hints found in incidents (for example `path/to/file.go:187`)
 - Step 2: `triage llm-request`
   - input schema: `llm-prep.v1`
   - output schema: `llm-request.v1`
@@ -97,6 +98,17 @@ This command persists intermediate artifacts in `artifact-dir`:
   - otherwise use `anthropic` when `ANTHROPIC_API_KEY` is present
   - if both keys are present, prefer `openai`
   - if no key is present, fallback to `mock` for a coarse local analysis
+  - when repository context cannot be loaded, execution continues with non-repo evidence only
+
+Single-command scan flow:
+
+```bash
+.venv/bin/python -m triage scan --output "$(pwd)/scan-result.json"
+```
+
+`scan-result.v1` reports repository enrichment status in:
+- `meta.repo_context_enabled`
+- `meta.repo_context_error`
 
 Optional notify step:
 
@@ -232,7 +244,9 @@ cat events.json | .venv/bin/python -m triage llm-prep \
           "confidence",
           "safe_to_escalate",
           "files_or_area_to_check",
-          "tests_to_run"
+          "tests_to_run",
+          "likely_fault_location",
+          "confidence_reason"
         ]
       }
     }
@@ -257,7 +271,13 @@ cat events.json | .venv/bin/python -m triage llm-prep \
         "confidence": 0.71,
         "safe_to_escalate": true,
         "files_or_area_to_check": ["internal/approvals/repository.go"],
-        "tests_to_run": ["unit", "integration"]
+        "tests_to_run": ["unit", "integration"],
+        "likely_fault_location": {
+          "file": "internal/approvals/repository.go",
+          "line": 187,
+          "function": "LoadApprovalByID"
+        },
+        "confidence_reason": "Stacktrace points directly to repository.go:187."
       }
     }
   ]

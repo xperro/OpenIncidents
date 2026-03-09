@@ -1195,7 +1195,12 @@ def handle_llm_prep(args, context: Context) -> int:
         max_context_chars=args.max_context_chars,
         max_stack_lines=args.max_stack_lines,
     )
-    repo_sources = build_repo_sources_for_llm(args, context, env)
+    repo_sources = []
+    repo_context_error = ""
+    try:
+        repo_sources = build_repo_sources_for_llm(args, context, env)
+    except UserError as exc:
+        repo_context_error = str(exc)
     if repo_sources:
         prepared = enrich_prepared_with_repo_context(
             prepared,
@@ -1217,6 +1222,8 @@ def handle_llm_prep(args, context: Context) -> int:
     else:
         prepared.setdefault("meta", {})
         prepared["meta"]["repo_context_enabled"] = False
+        if repo_context_error:
+            prepared["meta"]["repo_context_error"] = repo_context_error
     prepared["meta"]["cost_profile"] = args.cost_profile
     rendered = render_json(prepared)
 
@@ -1359,7 +1366,12 @@ def handle_llm_resolve(args, context: Context) -> int:
         max_context_chars=args.max_context_chars,
         max_stack_lines=args.max_stack_lines,
     )
-    repo_sources = build_repo_sources_for_llm(args, context, env)
+    repo_sources = []
+    repo_context_error = ""
+    try:
+        repo_sources = build_repo_sources_for_llm(args, context, env)
+    except UserError as exc:
+        repo_context_error = str(exc)
     if repo_sources:
         prepared = enrich_prepared_with_repo_context(
             prepared,
@@ -1381,6 +1393,8 @@ def handle_llm_resolve(args, context: Context) -> int:
     else:
         prepared.setdefault("meta", {})
         prepared["meta"]["repo_context_enabled"] = False
+        if repo_context_error:
+            prepared["meta"]["repo_context_error"] = repo_context_error
     prepared["meta"]["cost_profile"] = args.cost_profile
 
     model = resolve_request_model(
@@ -1543,7 +1557,12 @@ def handle_scan(args, context: Context) -> int:
         max_context_chars=args.max_context_chars,
         max_stack_lines=args.max_stack_lines,
     )
-    repo_sources = build_repo_sources_for_llm(args, context, env)
+    repo_sources = []
+    repo_context_error = ""
+    try:
+        repo_sources = build_repo_sources_for_llm(args, context, env)
+    except UserError as exc:
+        repo_context_error = str(exc)
     if repo_sources:
         prepared = enrich_prepared_with_repo_context(
             prepared,
@@ -1565,6 +1584,8 @@ def handle_scan(args, context: Context) -> int:
     else:
         prepared.setdefault("meta", {})
         prepared["meta"]["repo_context_enabled"] = False
+        if repo_context_error:
+            prepared["meta"]["repo_context_error"] = repo_context_error
     prepared["meta"]["cost_profile"] = args.cost_profile
 
     model = resolve_request_model(
@@ -1628,6 +1649,8 @@ def handle_scan(args, context: Context) -> int:
             "prepared_incidents": (prepared.get("meta") or {}).get("prepared_incidents", 0),
             "analyzed_incidents": (analysis.get("meta") or {}).get("analyzed_incidents", 0),
             "notified": bool(notify_report),
+            "repo_context_enabled": bool((prepared.get("meta") or {}).get("repo_context_enabled")),
+            "repo_context_error": (prepared.get("meta") or {}).get("repo_context_error", ""),
         },
         "artifacts": {
             "artifact_dir": artifact_dir,
@@ -1689,13 +1712,34 @@ def build_repo_sources_for_llm(args, context: Context, env: dict[str, str]) -> l
     repo_specs = dedupe_repo_specs(repo_urls, branch=args.repo_branch)
 
     for spec in repo_specs:
-        clone_url = apply_repo_auth(spec["repo_url"], spec.get("auth"), env)
+        has_explicit_auth = bool(spec.get("auth"))
+        auth_clone_url = apply_repo_auth(
+            spec["repo_url"],
+            spec.get("auth"),
+            env,
+            strict=has_explicit_auth,
+        )
+        fallback_auth_url = apply_repo_auth(
+            spec["repo_url"],
+            {"username_env": "GIT_USERNAME", "token_env": "GIT_TOKEN"},
+            env,
+            strict=False,
+        )
         repo_sources.append(
             checkout_repo(
                 context.cwd,
                 spec["repo_url"],
                 branch=spec["branch"],
-                clone_url=clone_url,
+                clone_url=(auth_clone_url if has_explicit_auth else spec["repo_url"]),
+                fallback_clone_url=(
+                    spec["repo_url"]
+                    if has_explicit_auth and auth_clone_url != spec["repo_url"]
+                    else (
+                        auth_clone_url
+                        if auth_clone_url != spec["repo_url"]
+                        else (fallback_auth_url if fallback_auth_url != spec["repo_url"] else None)
+                    )
+                ),
             )
         )
     return repo_sources
@@ -2158,16 +2202,16 @@ def dedupe_repo_specs(
     return unique
 
 
-def apply_repo_auth(repo_url: str, auth: dict[str, Any], env: dict[str, str]) -> str:
-    if not auth:
-        return repo_url
-    username_env = str(auth.get("username_env") or "").strip()
-    token_env = str(auth.get("token_env") or "").strip()
+def apply_repo_auth(repo_url: str, auth: dict[str, Any], env: dict[str, str], *, strict: bool = False) -> str:
+    username_env = str((auth or {}).get("username_env") or "").strip()
+    token_env = str((auth or {}).get("token_env") or "").strip()
     if not username_env and not token_env:
         return repo_url
     username = env.get(username_env, "").strip() if username_env else ""
     token = env.get(token_env, "").strip() if token_env else ""
     if not username or not token:
+        if not strict:
+            return repo_url
         missing = []
         if username_env and not username:
             missing.append(username_env)

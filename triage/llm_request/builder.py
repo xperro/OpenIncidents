@@ -68,6 +68,8 @@ def build_llm_request_payload(
                         "safe_to_escalate",
                         "files_or_area_to_check",
                         "tests_to_run",
+                        "likely_fault_location",
+                        "confidence_reason",
                     ],
                 },
             }

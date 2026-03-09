@@ -42,6 +42,10 @@ Define the operator-facing workflow for finding, understanding, and changing `tr
   - prints the physical location where the value lives
   - prints the recommended edit command
   - prints when the change takes effect
+- Environment-first scan defaults:
+  - `triage scan` may run with minimal flags when `TRIAGE_SCAN_*` variables are present in `.env`
+  - key defaults include cloud/runtime/source/project/subscription/provider/model/repo branch/notify targets
+  - this env-driven path is the recommended local operator mode for repetitive scans
 - `triage config wizard` contract:
   - is the recommended interactive flow for frequent operator changes
   - must offer these top-level categories:
@@ -75,6 +79,11 @@ Define the operator-facing workflow for finding, understanding, and changing `tr
 | `default_cloud` | Set the local operator default cloud | `local` | `~/.triage/config.json` or `%APPDATA%/triage/config.json` | `triage settings set default_cloud <value>` or `triage config wizard` | Next CLI invocation |
 | `gcp.log_filter_override` | Replace the derived GCP Logging filter | `project` | `./triage.yaml` | `triage config wizard` | Next `triage infra generate`, `triage infra plan`, or `triage infra apply`; deployed effect after apply |
 | `aws.filter_pattern_override` | Replace the derived AWS Logs subscription filter | `project` | `./triage.yaml` | `triage config wizard` | Next `triage infra generate`, `triage infra plan`, or `triage infra apply`; deployed effect after apply |
+| `TRIAGE_SCAN_SOURCE` | Select scan source (`gcp-pubsub`, `gcp-logging`) | `env` | `.env` (local) or runtime env | Edit `.env` or secret manager | Next `triage scan` invocation |
+| `TRIAGE_SCAN_SUBSCRIPTION` | Override Pub/Sub subscription for scan pulls | `env` | `.env` (local) or runtime env | Edit `.env` or secret manager | Next `triage scan` invocation |
+| `TRIAGE_SCAN_PROJECT_ID` | Override GCP project for scan pulls | `env` | `.env` (local) or runtime env | Edit `.env` or secret manager | Next `triage scan` invocation |
+| `TRIAGE_SCAN_PROVIDER` | Default LLM provider for scan | `env` | `.env` (local) or runtime env | Edit `.env` or secret manager | Next `triage scan` invocation |
+| `TRIAGE_SCAN_NOTIFY` | Enable/disable notify in scan by default | `env` | `.env` (local) or runtime env | Edit `.env` or secret manager | Next `triage scan` invocation |
 
 ## Dependencies
 

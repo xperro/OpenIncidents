@@ -426,6 +426,8 @@ def group_events(events: list[NormalizedEvent]) -> dict[str, dict[str, Any]]:
                             "safe_to_escalate",
                             "files_or_area_to_check",
                             "tests_to_run",
+                            "likely_fault_location",
+                            "confidence_reason",
                         ],
                     },
                 },

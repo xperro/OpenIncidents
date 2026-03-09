@@ -97,6 +97,13 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
   - `safe_to_escalate`
   - `files_or_area_to_check`
   - `tests_to_run`
+  - `likely_fault_location` (`file`, `line`, `function`)
+  - `confidence_reason`
+- Confidence normalization:
+  - runtime parser accepts numeric values (`0.0` to `1.0`)
+  - runtime parser also accepts textual levels (`high`, `medium`, `low`) and percentage strings (`85%`) and normalizes them to `0.0-1.0`
+- File targeting normalization:
+  - when `likely_fault_location.file` and `line` are present, `files_or_area_to_check` is reduced to the primary file to keep output compact and actionable
 - Safety constraints:
   - redact email addresses before provider submission
   - redact `Authorization`, `Proxy-Authorization`, `Cookie`, and `Set-Cookie` header values before provider submission

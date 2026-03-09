@@ -51,6 +51,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage llm-client`
   - `triage llm-resolve`
   - `triage notify`
+  - `triage scan`
   - `triage settings show`
   - `triage settings set <key> <value>`
   - `triage settings validate --cloud gcp|aws|all`
@@ -63,8 +64,8 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage infra apply`
   - `triage run`
 - Bootstrap gating:
-  - if no local CLI state exists, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `llm-resolve`, `notify`, `config show`, `config where`, and `config wizard` are allowed
-  - if local CLI state exists but `bootstrap_complete` is `false`, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `llm-resolve`, `notify`, `settings show`, `settings set`, `settings validate`, `config show`, `config where`, and `config wizard` are allowed
+  - if no local CLI state exists, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `llm-resolve`, `notify`, `scan`, `config show`, `config where`, and `config wizard` are allowed
+  - if local CLI state exists but `bootstrap_complete` is `false`, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `llm-resolve`, `notify`, `scan`, `settings show`, `settings set`, `settings validate`, `config show`, `config where`, and `config wizard` are allowed
   - `template download`, `infra generate`, `infra plan`, `infra apply`, and `run` are blocked until bootstrap is complete
 - Help and error behavior:
   - `triage help` and `triage h` print the same top-level help as `triage -h`
@@ -193,6 +194,9 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - LLM and notifier language can be controlled with `TRIAGE_LANGUAGE` (`english` or `spanish`)
   - `triage llm-client` executes `llm-request.v1` payloads and emits `llm-analysis.v1` output
   - `triage llm-resolve` runs the full `llm-prep -> llm-request -> llm-client` chain in one command and writes `prepared.json`, `llm-request.json`, and `llm-analysis.json` under the selected artifact directory
+  - `triage scan` runs source ingestion (`gcp-pubsub`, `gcp-logging`, or `--input`) + `llm-prep` + `llm-request` + `llm-client` + optional `notify` in one command
+  - `triage scan` supports env-driven defaults via `TRIAGE_SCAN_*` variables
+  - `triage scan` repository context enrichment is best-effort: clone/update failures must not abort the full scan and must be reported in `scan-result.v1` meta (`repo_context_enabled`, `repo_context_error`)
   - when `triage llm-resolve` omits `--provider`, provider selection is automatic: `openai` if `OPENAI_API_KEY` exists, else `anthropic` if `ANTHROPIC_API_KEY` exists, else `mock`; when both exist, `openai` is preferred
   - `triage notify` sends `llm-analysis.v1` results to `slack`, `discord`, and/or `jira` using environment-backed credentials, with optional dry-run mode
   - `triage llm-client` supports `mock`, `openai`, and `anthropic` provider modes

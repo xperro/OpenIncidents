@@ -24,7 +24,13 @@ def load_env_file(path: str, env: dict[str, str]) -> dict[str, str]:
             if not stripped or stripped.startswith("#") or "=" not in stripped:
                 continue
             key, value = stripped.split("=", 1)
-            loaded.setdefault(key.strip(), value.strip())
+            normalized_key = key.strip()
+            normalized_value = value.strip()
+            current_value = loaded.get(normalized_key)
+            # Keep explicit environment precedence only when a non-empty value exists.
+            # If the variable is unset or empty, load it from .env.
+            if current_value is None or str(current_value).strip() == "":
+                loaded[normalized_key] = normalized_value
     return loaded
 
 

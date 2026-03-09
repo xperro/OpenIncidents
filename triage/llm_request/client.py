@@ -103,8 +103,18 @@ def default_model(provider: str) -> str:
 
 
 def call_openai(api_key: str, model: str, incident: dict[str, Any], *, language: str, timeout_seconds: int) -> str:
+    max_tokens = 700
+    constraints = incident.get("constraints")
+    if isinstance(constraints, dict):
+        try:
+            parsed = int(constraints.get("max_tokens") or 700)
+            if parsed > 0:
+                max_tokens = min(parsed, 1200)
+        except (TypeError, ValueError):
+            pass
     payload = {
         "model": model,
+        "max_tokens": max_tokens,
         "response_format": {"type": "json_object"},
         "messages": [
             {"role": "system", "content": system_prompt(language)},
@@ -177,21 +187,35 @@ def system_prompt(language: str) -> str:
         else "Write all textual values in English."
     )
     return (
-        "You are an incident triage assistant. Return STRICT JSON only with fields: "
+        "You are an incident triage assistant. Return STRICT compact JSON only with fields: "
         "summary, suspected_cause, suggested_fix, confidence, safe_to_escalate, "
-        "files_or_area_to_check, tests_to_run. "
-        "Do not add markdown. "
+        "files_or_area_to_check, tests_to_run, likely_fault_location, confidence_reason. "
+        "Use at most 2 items in files_or_area_to_check and tests_to_run. "
+        "likely_fault_location must be an object with file, line, function. "
+        "Do not add markdown. Keep all values concise. "
         + lang_instruction
     )
 
 
 def user_prompt(incident: dict[str, Any], language: str) -> str:
+    runtime = str(incident.get("runtime_hint") or "").strip().lower()
     label = (
         "Analyze this prepared incident JSON and propose a fix in Spanish:\n"
         if language == "spanish"
         else "Analyze this prepared incident JSON and propose a fix in English:\n"
     )
-    return label + json.dumps(incident, ensure_ascii=False)
+    runtime_instruction = ""
+    if runtime == "go":
+        runtime_instruction = (
+            "For Go incidents, suggest a concrete fix pattern using explicit nil checks and guard clauses "
+            "(example style: if x == nil { return err }). Keep it short.\n"
+        )
+    elif runtime == "python":
+        runtime_instruction = (
+            "For Python incidents, suggest a concrete fix pattern with explicit None checks and early returns "
+            "(example style: if value is None: return ...). Keep it short.\n"
+        )
+    return label + runtime_instruction + json.dumps(incident, ensure_ascii=False)
 
 
 def mock_analysis(incident: dict[str, Any], *, language: str) -> dict[str, Any]:
@@ -207,6 +231,8 @@ def mock_analysis(incident: dict[str, Any], *, language: str) -> dict[str, Any]:
             "safe_to_escalate": severity in ("ERROR", "CRITICAL", "ALERT", "EMERGENCY"),
             "files_or_area_to_check": [],
             "tests_to_run": ["unitarias", "integracion"],
+            "likely_fault_location": {"file": "", "line": 0, "function": ""},
+            "confidence_reason": "Diagnostico preliminar basado en resumen y evidencia reducida.",
         }
     return {
         "summary": f"{service}: {summary}",
@@ -216,6 +242,8 @@ def mock_analysis(incident: dict[str, Any], *, language: str) -> dict[str, Any]:
         "safe_to_escalate": severity in ("ERROR", "CRITICAL", "ALERT", "EMERGENCY"),
         "files_or_area_to_check": [],
         "tests_to_run": ["unit", "integration"],
+        "likely_fault_location": {"file": "", "line": 0, "function": ""},
+        "confidence_reason": "Preliminary diagnosis from compact incident evidence.",
     }
 
 
@@ -226,14 +254,19 @@ def parse_analysis_output(raw_output: str, incident: dict[str, Any]) -> dict[str
         parsed = extract_first_json_object(raw_output)
     if not isinstance(parsed, dict):
         return fallback_analysis(incident, raw_output)
+    likely_location = coerce_location_object(parsed.get("likely_fault_location"))
+    files_to_check = coerce_list_of_strings(parsed.get("files_or_area_to_check"))[:2]
+    files_to_check = normalize_files_or_areas(files_to_check, likely_location)
     return {
         "summary": str(parsed.get("summary") or ""),
         "suspected_cause": str(parsed.get("suspected_cause") or ""),
         "suggested_fix": str(parsed.get("suggested_fix") or ""),
         "confidence": coerce_confidence(parsed.get("confidence")),
         "safe_to_escalate": bool(parsed.get("safe_to_escalate")),
-        "files_or_area_to_check": coerce_list_of_strings(parsed.get("files_or_area_to_check")),
-        "tests_to_run": coerce_list_of_strings(parsed.get("tests_to_run")),
+        "files_or_area_to_check": files_to_check,
+        "tests_to_run": coerce_list_of_strings(parsed.get("tests_to_run"))[:2],
+        "likely_fault_location": likely_location,
+        "confidence_reason": str(parsed.get("confidence_reason") or ""),
     }
 
 
@@ -247,6 +280,8 @@ def fallback_analysis(incident: dict[str, Any], raw_output: str) -> dict[str, An
         "safe_to_escalate": False,
         "files_or_area_to_check": [],
         "tests_to_run": [],
+        "likely_fault_location": {"file": "", "line": 0, "function": ""},
+        "confidence_reason": "Fallback response due to parse failure.",
         "parse_error_excerpt": raw_output[:400],
     }
 
@@ -265,6 +300,25 @@ def extract_first_json_object(raw: str) -> dict[str, Any] | None:
 
 
 def coerce_confidence(value: Any) -> float:
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized.endswith("%"):
+            try:
+                percent = float(normalized[:-1].strip())
+                normalized = str(percent / 100.0)
+            except (TypeError, ValueError):
+                normalized = normalized
+        confidence_labels = {
+            "very high": 0.95,
+            "high": 0.85,
+            "medium": 0.6,
+            "med": 0.6,
+            "low": 0.3,
+            "very low": 0.1,
+        }
+        if normalized in confidence_labels:
+            return confidence_labels[normalized]
+        value = normalized
     try:
         parsed = float(value)
     except (TypeError, ValueError):
@@ -282,3 +336,30 @@ def coerce_list_of_strings(value: Any) -> list[str]:
     if isinstance(value, str) and value.strip():
         return [value.strip()]
     return []
+
+
+def coerce_location_object(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        line = value.get("line")
+        try:
+            line_num = int(line)
+        except (TypeError, ValueError):
+            line_num = 0
+        return {
+            "file": str(value.get("file") or ""),
+            "line": line_num,
+            "function": str(value.get("function") or ""),
+        }
+    return {"file": "", "line": 0, "function": ""}
+
+
+def normalize_files_or_areas(files: list[str], likely_location: dict[str, Any]) -> list[str]:
+    likely_file = str(likely_location.get("file") or "").strip()
+    likely_line = int(likely_location.get("line") or 0)
+    if likely_file and likely_line > 0:
+        return [likely_file]
+    if likely_file:
+        if likely_file in files:
+            return [likely_file]
+        return [likely_file] + files[:1]
+    return files[:2]

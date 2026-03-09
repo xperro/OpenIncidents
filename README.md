@@ -12,6 +12,9 @@ The repository is still documentation-first: the canonical product and architect
 - Go and Python are the official handler template runtimes.
 - The repo already includes:
   - the initial `triage` CLI package under `triage/`
+  - end-to-end LLM commands: `llm-prep`, `llm-request`, `llm-client`, `llm-resolve`
+  - notifier command: `notify` (Discord, Slack, Jira)
+  - end-to-end scan command: `scan`
   - official template trees under `triage/templates/`
   - unit tests under `tests/`
   - CI and release workflows under `.github/workflows/`
@@ -57,6 +60,12 @@ The current CLI command surface is:
 - `triage help [command ...]`
 - `triage h [command ...]`
 - `triage init`
+- `triage llm-prep`
+- `triage llm-request`
+- `triage llm-client`
+- `triage llm-resolve`
+- `triage notify`
+- `triage scan`
 - `triage settings show`
 - `triage settings set <key> <value>`
 - `triage settings validate --cloud gcp|aws|all`
@@ -88,7 +97,7 @@ python3 -m triage infra
 ### 2. Run the test suite locally
 
 ```bash
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m pytest -q
 ```
 
 ### 3. Bootstrap a local project
@@ -181,13 +190,33 @@ This produces:
 - versioned `.tar.gz` and `.zip` bundles
 - SHA256 checksum output
 
+### 7. Run End-To-End Scan
+
+With `.env` configured:
+
+```bash
+python3 -m triage scan --output "$(pwd)/scan-result.json"
+```
+
+Artifacts are written to `.triage/build/local/scan/`:
+
+- `prepared.json`
+- `llm-request.json`
+- `llm-analysis.json`
+- `llm-notify.json` (when notify is enabled)
+
+If repository context cannot be loaded (clone/update/auth failure), scan continues and reports:
+
+- `meta.repo_context_enabled`
+- `meta.repo_context_error`
+
 ## CI And Release
 
-- [`.github/workflows/ci.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/ci.yml) runs:
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs:
   - unit tests on Ubuntu, macOS, and Windows
   - a CLI smoke test with `python -m triage --help`
   - release bundle build and extraction checks
-- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.8`
+- [`.github/workflows/release.yml`](.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.8`
 
 ## Where Artifacts Are Uploaded
 
@@ -197,7 +226,7 @@ There are two upload targets:
 - Versioned releases upload downloadable assets to GitHub Releases for this repository:
   - [github.com/xperro/OpenIncidents/releases](https://github.com/xperro/OpenIncidents/releases)
 
-To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.8`, either by pushing the tag:
+To publish a real release, trigger [`.github/workflows/release.yml`](.github/workflows/release.yml) with a tag like `v1.0.8`, either by pushing the tag:
 
 ```bash
 git tag v1.0.8
