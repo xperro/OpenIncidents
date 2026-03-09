@@ -43,6 +43,8 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `argparse` is the required baseline for command wiring, help output, and subcommand structure
   - filesystem, subprocess, environment, HTTP/JSON, and packaging helpers must use the Python standard library unless a future spec explicitly revises that rule
 - Command surface:
+  - `triage help [command ...]`
+  - `triage h [command ...]`
   - `triage init`
   - `triage settings show`
   - `triage settings set <key> <value>`
@@ -59,6 +61,12 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - if no local CLI state exists, only `help`, `version`, `init`, `config show`, `config where`, and `config wizard` are allowed
   - if local CLI state exists but `bootstrap_complete` is `false`, only `help`, `version`, `init`, `settings show`, `settings set`, `settings validate`, `config show`, `config where`, and `config wizard` are allowed
   - `template download`, `infra generate`, `infra plan`, `infra apply`, and `run` are blocked until bootstrap is complete
+- Help and error behavior:
+  - `triage help` and `triage h` print the same top-level help as `triage -h`
+  - `triage help <command ...>` prints nested command help, for example `triage help infra apply`
+  - invoking a command group without a required subcommand, such as `triage settings` or `triage infra`, prints contextual help for that group and exits non-zero
+  - argument parse failures must include a hint telling the operator to rerun the exact command with `-h`
+  - user-triggered interrupts during interactive commands must exit cleanly without a Python traceback
 - Shared selection flags:
   - `--cloud gcp|aws`
   - `--runtime go|python`
@@ -166,6 +174,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
 - Local run prerequisites:
   - `.env` may be used for local development secrets and must stay untracked
   - configured repository Git URLs and credential env vars must be resolvable for context enrichment
+  - when `triage run` uses the default `--input -`, the operator must pipe a replay payload on stdin; if stdin is interactive, the CLI fails fast with guidance instead of blocking silently
 - Override model:
   - flags may override selected config values without redefining the full config schema
 

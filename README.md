@@ -54,6 +54,8 @@ The repository is still documentation-first: the canonical product and architect
 
 The current CLI command surface is:
 
+- `triage help [command ...]`
+- `triage h [command ...]`
 - `triage init`
 - `triage settings show`
 - `triage settings set <key> <value>`
@@ -69,13 +71,21 @@ The current CLI command surface is:
 
 ## Quick Start
 
-### 1. Inspect the CLI
+### 1. Run the CLI locally from the repository
 
 ```bash
 python3 -m triage --help
+python3 -m triage help infra apply
 ```
 
-### 2. Run the test suite
+You can also ask for contextual help on command groups:
+
+```bash
+python3 -m triage settings
+python3 -m triage infra
+```
+
+### 2. Run the test suite locally
 
 ```bash
 python3 -m unittest discover -s tests -v
@@ -126,7 +136,33 @@ For GCP, `triage infra apply` now:
 - builds and publishes the selected handler as a container image with `gcloud builds submit`
 - runs the final Terraform apply against Cloud Run, Pub/Sub push, and Cloud Logging sink resources
 
-### 5. Build release assets
+### 5. Smoke test a handler locally
+
+For a pure local replay, disable external notifiers you do not want to call yet in `triage.yaml` or point them at test credentials and endpoints first.
+
+Python example with a bundled sample event:
+
+```bash
+python3 -m triage run \
+  --cloud gcp \
+  --runtime python \
+  --handler-path /absolute/path/to/triage-handler \
+  --input /absolute/path/to/triage-handler/sample-events/gcp-pubsub.json
+```
+
+The same replay can be piped on stdin:
+
+```bash
+cat /absolute/path/to/triage-handler/sample-events/gcp-pubsub.json | \
+  python3 -m triage run \
+    --cloud gcp \
+    --runtime python \
+    --handler-path /absolute/path/to/triage-handler
+```
+
+Go local replay uses the same `triage run` command shape, but the downloaded Go GCP template expects Go `1.26.1` locally.
+
+### 6. Build release assets locally
 
 ```bash
 python3 scripts/build_release.py --output-dir dist/local
@@ -146,7 +182,7 @@ This produces:
   - unit tests on Ubuntu, macOS, and Windows
   - a CLI smoke test with `python -m triage --help`
   - release bundle build and extraction checks
-- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.4`
+- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.5`
 
 ## Where Artifacts Are Uploaded
 
@@ -156,11 +192,11 @@ There are two upload targets:
 - Versioned releases upload downloadable assets to GitHub Releases for this repository:
   - [github.com/xperro/OpenIncidents/releases](https://github.com/xperro/OpenIncidents/releases)
 
-To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.4`, either by pushing the tag:
+To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.5`, either by pushing the tag:
 
 ```bash
-git tag v1.0.4
-git push origin v1.0.4
+git tag v1.0.5
+git push origin v1.0.5
 ```
 
 or by running the workflow manually from GitHub Actions with the `tag` input.
@@ -187,9 +223,9 @@ chmod +x triage
 CLI flow with GitHub CLI:
 
 ```bash
-gh release download v1.0.4 \
+gh release download v1.0.5 \
   --repo xperro/OpenIncidents \
-  --pattern 'triage_1.0.4_bundle.tar.gz' \
+  --pattern 'triage_1.0.5_bundle.tar.gz' \
   --dir ~/Downloads/openincidents
 ```
 
@@ -221,9 +257,9 @@ py .\triage.pyz --help
 CLI flow with GitHub CLI:
 
 ```powershell
-gh release download v1.0.4 `
+gh release download v1.0.5 `
   --repo xperro/OpenIncidents `
-  --pattern "triage_1.0.4_bundle.zip" `
+  --pattern "triage_1.0.5_bundle.zip" `
   --dir "$env:USERPROFILE\\Downloads\\OpenIncidents"
 ```
 

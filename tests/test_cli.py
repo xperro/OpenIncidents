@@ -17,6 +17,16 @@ from triage.state import new_state, save_state, state_path
 from triage.validation import ValidationResult
 
 
+class TtyInput(io.StringIO):
+    def isatty(self):
+        return True
+
+
+class InterruptingInput:
+    def readline(self):
+        raise KeyboardInterrupt
+
+
 class CliTests(unittest.TestCase):
     def setUp(self):
         self.home_dir = tempfile.mkdtemp(prefix="triage-home-")
@@ -91,6 +101,65 @@ class CliTests(unittest.TestCase):
         self.assertIn("Local state:", stdout)
         self.assertTrue(os.path.exists(os.path.join(self.work_dir, "triage.yaml")))
         self.assertTrue(os.path.exists(state_path()))
+
+    def test_help_alias_prints_root_help(self):
+        code, stdout, stderr = self.run_cli(["h"])
+
+        self.assertEqual(code, 0, msg=stderr)
+        self.assertIn("Bootstrap local state, inspect configuration", stdout)
+        self.assertIn("triage help infra apply", stdout)
+        self.assertEqual("", stderr)
+
+    def test_nested_help_command_prints_target_help(self):
+        code, stdout, stderr = self.run_cli(["help", "infra", "apply"])
+
+        self.assertEqual(code, 0, msg=stderr)
+        self.assertIn("usage: triage infra apply", stdout)
+        self.assertIn("--handler-path", stdout)
+        self.assertIn("triage infra apply --cloud gcp --runtime go --handler-path /abs/path", stdout)
+        self.assertEqual("", stderr)
+
+    def test_settings_without_subcommand_prints_contextual_help(self):
+        code, stdout, stderr = self.run_cli(["settings"])
+
+        self.assertEqual(code, 2)
+        self.assertEqual("", stdout)
+        self.assertIn("usage: triage settings", stderr)
+        self.assertIn("choose one `settings` command", stderr)
+        self.assertNotIn("settings_command", stderr)
+
+    def test_infra_without_subcommand_prints_contextual_help(self):
+        code, stdout, stderr = self.run_cli(["infra"])
+
+        self.assertEqual(code, 2)
+        self.assertEqual("", stdout)
+        self.assertIn("usage: triage infra", stderr)
+        self.assertIn("choose one `infra` command", stderr)
+        self.assertNotIn("infra_command", stderr)
+
+    def test_parse_errors_point_to_command_help(self):
+        code, stdout, stderr = self.run_cli(["run"])
+
+        self.assertEqual(code, 2)
+        self.assertEqual("", stdout)
+        self.assertIn("triage run: error: the following arguments are required", stderr)
+        self.assertIn("hint: run `triage run -h` for usage examples.", stderr)
+
+    def test_keyboard_interrupt_is_handled_cleanly(self):
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+
+        code = main(
+            argv=["init"],
+            cwd=self.work_dir,
+            stdin=InterruptingInput(),
+            stdout=stdout,
+            stderr=stderr,
+        )
+
+        self.assertEqual(code, 130)
+        self.assertIn("Validate which cloud now", stdout.getvalue())
+        self.assertEqual("Interrupted.\n", stderr.getvalue())
 
     def test_template_download_writes_expected_files(self):
         self.complete_bootstrap()
@@ -408,6 +477,55 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(code, 1)
         self.assertIn("`--handler-path` must be absolute", stderr)
+
+    def test_run_requires_piped_input_or_explicit_file(self):
+        self.complete_bootstrap()
+        project = default_project_config()
+        project["integrations"]["slack"]["enabled"] = False
+        project["integrations"]["jira"]["enabled"] = False
+        save_project_config(self.work_dir, project)
+        template_path = os.path.join(self.work_dir, "template")
+
+        code, _, stderr = self.run_cli(
+            [
+                "template",
+                "download",
+                "--cloud",
+                "gcp",
+                "--runtime",
+                "python",
+                "--output",
+                template_path,
+            ]
+        )
+        self.assertEqual(code, 0, msg=stderr)
+
+        stdout = io.StringIO()
+        stderr = io.StringIO()
+        with mock.patch(
+            "triage.cli.validate_cloud",
+            return_value=ValidationResult(cloud="gcp", ok=True, checks=["ok"]),
+        ):
+            code = main(
+                argv=[
+                    "run",
+                    "--cloud",
+                    "gcp",
+                    "--runtime",
+                    "python",
+                    "--handler-path",
+                    template_path,
+                ],
+                cwd=self.work_dir,
+                stdin=TtyInput(),
+                stdout=stdout,
+                stderr=stderr,
+            )
+
+        self.assertEqual(code, 1)
+        self.assertEqual("", stdout.getvalue())
+        self.assertIn("No replay payload was provided on stdin", stderr.getvalue())
+        self.assertIn("--input /abs/path/to/event.json", stderr.getvalue())
 
 
 if __name__ == "__main__":

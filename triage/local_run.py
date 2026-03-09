@@ -30,6 +30,12 @@ def load_env_file(path: str, env: dict[str, str]) -> dict[str, str]:
 
 def read_input(input_path: str, stdin) -> str:
     if input_path == "-":
+        is_tty = getattr(stdin, "isatty", None)
+        if callable(is_tty) and is_tty():
+            raise UserError(
+                "No replay payload was provided on stdin. Pipe an event into `triage run` "
+                "or pass `--input /abs/path/to/event.json`."
+            )
         return stdin.read()
     with open(input_path, "r", encoding="utf-8") as handle:
         return handle.read()

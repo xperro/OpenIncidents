@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import sys
 from dataclasses import dataclass
@@ -35,7 +36,9 @@ from .templates import download_template
 from .validation import validate_cloud, validate_runtime
 
 
+HELP_COMMAND_PATH = ("help",)
 ALLOWED_WITHOUT_STATE = {
+    HELP_COMMAND_PATH,
     ("init",),
     ("config", "show"),
     ("config", "where"),
@@ -56,76 +59,370 @@ class Context:
     stderr: Any
 
 
+class TriageHelpFormatter(
+    argparse.ArgumentDefaultsHelpFormatter,
+    argparse.RawDescriptionHelpFormatter,
+):
+    """Pretty help output for the CLI while staying within ``argparse``."""
+
+
+class FriendlyArgumentParser(argparse.ArgumentParser):
+    """Argument parser that prints actionable error hints."""
+
+    def __init__(self, *args, **kwargs):
+        kwargs.setdefault("formatter_class", TriageHelpFormatter)
+        super().__init__(*args, **kwargs)
+
+    def error(self, message: str) -> None:
+        self.print_usage(sys.stderr)
+        self.exit(
+            2,
+            f"{self.prog}: error: {message}\n"
+            f"hint: run `{self.prog} -h` for usage examples.\n",
+        )
+
+
+def format_examples(*commands: str) -> str:
+    if not commands:
+        return ""
+    return "Examples:\n" + "\n".join(f"  {command}" for command in commands)
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="triage")
+    parser = FriendlyArgumentParser(
+        prog="triage",
+        description=(
+            "Bootstrap local state, inspect configuration, download official handler templates, "
+            "deploy cloud infrastructure, and replay handlers locally."
+        ),
+        epilog=format_examples(
+            "triage init",
+            "triage settings show",
+            "triage template download --cloud gcp --runtime go --output /abs/path",
+            "triage infra apply --cloud gcp --runtime go --handler-path /abs/path",
+            "cat sample-event.json | triage run --cloud gcp --runtime go --handler-path /abs/path",
+            "triage help infra apply",
+        ),
+    )
     parser.add_argument("--version", action="version", version=f"triage {VERSION}")
-    subparsers = parser.add_subparsers(dest="command")
+    subparsers = parser.add_subparsers(
+        dest="command",
+        title="commands",
+        metavar="command",
+        parser_class=FriendlyArgumentParser,
+    )
+    help_registry: dict[tuple[str, ...], argparse.ArgumentParser] = {(): parser}
 
-    init_parser = subparsers.add_parser("init", help="Bootstrap local CLI state and scaffold the project.")
+    help_parser = subparsers.add_parser(
+        "help",
+        aliases=["h"],
+        help="Show help for the CLI or a nested command.",
+        description="Print top-level help or help for a nested command path.",
+        epilog=format_examples(
+            "triage help",
+            "triage help infra",
+            "triage help infra apply",
+            "triage h run",
+        ),
+    )
+    help_parser.add_argument(
+        "topic",
+        nargs="*",
+        metavar="command",
+        help="Optional command path, for example `infra apply`.",
+    )
+    help_parser.set_defaults(command_path=HELP_COMMAND_PATH, handler=handle_help, help_registry=help_registry)
+    help_registry[("help",)] = help_parser
+    help_registry[("h",)] = help_parser
+
+    init_parser = subparsers.add_parser(
+        "init",
+        help="Bootstrap local CLI state and scaffold the project.",
+        description="Interactively validate clouds, select an LLM provider, and scaffold the current project.",
+        epilog=format_examples(
+            "triage init",
+        ),
+    )
     init_parser.set_defaults(command_path=("init",), handler=handle_init)
+    help_registry[("init",)] = init_parser
 
-    settings = subparsers.add_parser("settings", help="Inspect or mutate local CLI settings.")
-    settings_subparsers = settings.add_subparsers(dest="settings_command", required=True)
+    settings = subparsers.add_parser(
+        "settings",
+        help="Inspect or mutate local CLI settings.",
+        description="Inspect or update the per-user CLI state stored outside the repository.",
+        epilog=format_examples(
+            "triage settings show",
+            "triage settings set default_cloud aws",
+            "triage settings validate --cloud all",
+        ),
+    )
+    settings.set_defaults(
+        command_path=HELP_COMMAND_PATH,
+        help_path=("settings",),
+        handler=handle_group_help,
+        parser_ref=settings,
+        available_subcommands=("show", "set", "validate"),
+        group_name="settings",
+    )
+    settings_subparsers = settings.add_subparsers(
+        dest="settings_command",
+        title="commands",
+        metavar="command",
+        parser_class=FriendlyArgumentParser,
+    )
+    help_registry[("settings",)] = settings
 
-    settings_show = settings_subparsers.add_parser("show", help="Show redacted local CLI state.")
+    settings_show = settings_subparsers.add_parser(
+        "show",
+        help="Show redacted local CLI state.",
+        description="Render the current local CLI state with secrets redacted.",
+        epilog=format_examples(
+            "triage settings show",
+        ),
+    )
     settings_show.set_defaults(command_path=("settings", "show"), handler=handle_settings_show)
+    help_registry[("settings", "show")] = settings_show
 
-    settings_set = settings_subparsers.add_parser("set", help="Set a writable local CLI key.")
-    settings_set.add_argument("key")
-    settings_set.add_argument("value")
+    settings_set = settings_subparsers.add_parser(
+        "set",
+        help="Set a writable local CLI key.",
+        description="Update a writable key in the per-user CLI state file.",
+        epilog=format_examples(
+            "triage settings set default_cloud gcp",
+            "triage settings set jira.issue_type_default Bug",
+            "triage settings set llm.api_key sk-***",
+        ),
+    )
+    settings_set.add_argument("key", metavar="KEY", help="Writable state key, for example `default_cloud`.")
+    settings_set.add_argument("value", metavar="VALUE", help="New value to persist for the selected key.")
     settings_set.set_defaults(command_path=("settings", "set"), handler=handle_settings_set)
+    help_registry[("settings", "set")] = settings_set
 
-    settings_validate = settings_subparsers.add_parser("validate", help="Validate local cloud tooling and credentials.")
-    settings_validate.add_argument("--cloud", choices=("gcp", "aws", "all"), required=True)
+    settings_validate = settings_subparsers.add_parser(
+        "validate",
+        help="Validate local cloud tooling and credentials.",
+        description="Re-run live tooling and credential checks for one or more clouds and persist the results.",
+        epilog=format_examples(
+            "triage settings validate --cloud gcp",
+            "triage settings validate --cloud all",
+        ),
+    )
+    settings_validate.add_argument(
+        "--cloud",
+        choices=("gcp", "aws", "all"),
+        required=True,
+        help="Cloud to validate right now.",
+    )
     settings_validate.set_defaults(command_path=("settings", "validate"), handler=handle_settings_validate)
+    help_registry[("settings", "validate")] = settings_validate
 
-    config = subparsers.add_parser("config", help="Show config locations and merged state.")
-    config_subparsers = config.add_subparsers(dest="config_command", required=True)
+    config = subparsers.add_parser(
+        "config",
+        help="Show config locations and merged state.",
+        description="Discover project and local configuration without guessing where values live.",
+        epilog=format_examples(
+            "triage config show --effective",
+            "triage config where llm.api_key",
+            "triage config wizard",
+        ),
+    )
+    config.set_defaults(
+        command_path=HELP_COMMAND_PATH,
+        help_path=("config",),
+        handler=handle_group_help,
+        parser_ref=config,
+        available_subcommands=("show", "where", "wizard"),
+        group_name="config",
+    )
+    config_subparsers = config.add_subparsers(
+        dest="config_command",
+        title="commands",
+        metavar="command",
+        parser_class=FriendlyArgumentParser,
+    )
+    help_registry[("config",)] = config
 
-    config_show = config_subparsers.add_parser("show", help="Show project, local, effective, or path views.")
+    config_show = config_subparsers.add_parser(
+        "show",
+        help="Show project, local, effective, or path views.",
+        description="Render project config, local CLI state, merged effective config, or important paths.",
+        epilog=format_examples(
+            "triage config show --project",
+            "triage config show --local",
+            "triage config show --effective",
+            "triage config show --paths",
+        ),
+    )
     group = config_show.add_mutually_exclusive_group(required=True)
-    group.add_argument("--project", action="store_true")
-    group.add_argument("--local", action="store_true")
-    group.add_argument("--effective", action="store_true")
-    group.add_argument("--paths", action="store_true")
+    group.add_argument("--project", action="store_true", help="Show `./triage.yaml` as written on disk.")
+    group.add_argument("--local", action="store_true", help="Show the local CLI state with secrets redacted.")
+    group.add_argument("--effective", action="store_true", help="Show the merged effective config view.")
+    group.add_argument("--paths", action="store_true", help="Show absolute paths used by the CLI.")
     config_show.set_defaults(command_path=("config", "show"), handler=handle_config_show)
+    help_registry[("config", "show")] = config_show
 
-    config_where_parser = config_subparsers.add_parser("where", help="Show where a config key lives.")
-    config_where_parser.add_argument("key")
+    config_where_parser = config_subparsers.add_parser(
+        "where",
+        help="Show where a config key lives.",
+        description="Explain which file owns a config key, how to edit it, and when the change takes effect.",
+        epilog=format_examples(
+            "triage config where llm.api_key",
+            "triage config where integrations.jira.issue_type",
+        ),
+    )
+    config_where_parser.add_argument("key", metavar="KEY", help="Config key to locate.")
     config_where_parser.set_defaults(command_path=("config", "where"), handler=handle_config_where)
+    help_registry[("config", "where")] = config_where_parser
 
-    config_wizard_parser = config_subparsers.add_parser("wizard", help="Interactive config workflow.")
+    config_wizard_parser = config_subparsers.add_parser(
+        "wizard",
+        help="Interactive config workflow.",
+        description="Guide common project and local configuration edits interactively.",
+        epilog=format_examples(
+            "triage config wizard",
+        ),
+    )
     config_wizard_parser.set_defaults(command_path=("config", "wizard"), handler=handle_config_wizard)
+    help_registry[("config", "wizard")] = config_wizard_parser
 
-    template = subparsers.add_parser("template", help="Work with bundled handler templates.")
-    template_subparsers = template.add_subparsers(dest="template_command", required=True)
-    template_download = template_subparsers.add_parser("download", help="Extract a bundled handler template.")
-    template_download.add_argument("--cloud", choices=VALID_CLOUDS, required=True)
-    template_download.add_argument("--runtime", choices=VALID_RUNTIMES, required=True)
-    template_download.add_argument("--output", required=True)
-    template_download.add_argument("--force", action="store_true")
+    template = subparsers.add_parser(
+        "template",
+        help="Work with bundled handler templates.",
+        description="Inspect and extract the official cloud-specific handler templates embedded in the CLI bundle.",
+        epilog=format_examples(
+            "triage template download --cloud gcp --runtime go --output /abs/path",
+            "triage template download --cloud aws --runtime python --output /abs/path --force",
+        ),
+    )
+    template.set_defaults(
+        command_path=HELP_COMMAND_PATH,
+        help_path=("template",),
+        handler=handle_group_help,
+        parser_ref=template,
+        available_subcommands=("download",),
+        group_name="template",
+    )
+    template_subparsers = template.add_subparsers(
+        dest="template_command",
+        title="commands",
+        metavar="command",
+        parser_class=FriendlyArgumentParser,
+    )
+    help_registry[("template",)] = template
+    template_download = template_subparsers.add_parser(
+        "download",
+        help="Extract a bundled handler template.",
+        description="Copy an official handler template to an explicit absolute output directory.",
+        epilog=format_examples(
+            "triage template download --cloud gcp --runtime go --output /abs/path",
+            "triage template download --cloud aws --runtime python --output /abs/path --force",
+        ),
+    )
+    template_download.add_argument("--cloud", choices=VALID_CLOUDS, required=True, help="Cloud variant to extract.")
+    template_download.add_argument("--runtime", choices=VALID_RUNTIMES, required=True, help="Handler runtime to extract.")
+    template_download.add_argument("--output", required=True, help="Absolute destination directory for the template.")
+    template_download.add_argument("--force", action="store_true", help="Overwrite an existing non-empty output directory.")
     template_download.set_defaults(command_path=("template", "download"), handler=handle_template_download)
+    help_registry[("template", "download")] = template_download
 
-    infra = subparsers.add_parser("infra", help="Generate and run Terraform workflow steps.")
-    infra_subparsers = infra.add_subparsers(dest="infra_command", required=True)
+    infra = subparsers.add_parser(
+        "infra",
+        help="Generate and run Terraform workflow steps.",
+        description="Generate Terraform inputs, plan changes, and apply cloud infrastructure for OpenIncidents.",
+        epilog=format_examples(
+            "triage infra generate --cloud gcp --runtime go",
+            "triage infra plan --cloud gcp --runtime go",
+            "triage infra apply --cloud gcp --runtime go --handler-path /abs/path",
+        ),
+    )
+    infra.set_defaults(
+        command_path=HELP_COMMAND_PATH,
+        help_path=("infra",),
+        handler=handle_group_help,
+        parser_ref=infra,
+        available_subcommands=("generate", "plan", "apply"),
+        group_name="infra",
+    )
+    infra_subparsers = infra.add_subparsers(
+        dest="infra_command",
+        title="commands",
+        metavar="command",
+        parser_class=FriendlyArgumentParser,
+    )
+    help_registry[("infra",)] = infra
     for name, handler in (
         ("generate", handle_infra_generate),
         ("plan", handle_infra_plan),
         ("apply", handle_infra_apply),
     ):
-        command = infra_subparsers.add_parser(name, help=f"Run `triage infra {name}`.")
-        command.add_argument("--cloud", choices=VALID_CLOUDS)
-        command.add_argument("--runtime", choices=VALID_RUNTIMES, required=True)
+        description = {
+            "generate": "Generate Terraform inputs and provider files for the selected cloud and runtime.",
+            "plan": "Generate Terraform inputs and produce a Terraform plan for the selected cloud and runtime.",
+            "apply": "Build or package the handler, refresh Terraform inputs, and apply the selected cloud stack.",
+        }[name]
+        examples = {
+            "generate": format_examples(
+                "triage infra generate --cloud gcp --runtime go",
+                "triage infra generate --cloud aws --runtime python",
+            ),
+            "plan": format_examples(
+                "triage infra plan --cloud gcp --runtime go",
+                "triage infra plan --cloud aws --runtime python",
+            ),
+            "apply": format_examples(
+                "triage infra apply --cloud gcp --runtime go --handler-path /abs/path",
+                "triage infra apply --cloud aws --runtime python --handler-path /abs/path",
+            ),
+        }[name]
+        command = infra_subparsers.add_parser(
+            name,
+            help=f"Run `triage infra {name}`.",
+            description=description,
+            epilog=examples,
+        )
+        command.add_argument(
+            "--cloud",
+            choices=VALID_CLOUDS,
+            help="Cloud to target. Falls back to project or local defaults when omitted.",
+        )
+        command.add_argument(
+            "--runtime",
+            choices=VALID_RUNTIMES,
+            required=True,
+            help="Handler runtime to generate, plan, or deploy.",
+        )
         if name == "apply":
-            command.add_argument("--handler-path", required=True)
+            command.add_argument(
+                "--handler-path",
+                required=True,
+                help="Absolute path to the handler template or implementation to deploy.",
+            )
         command.set_defaults(command_path=("infra", name), handler=handler)
+        help_registry[("infra", name)] = command
 
-    run_parser = subparsers.add_parser("run", help="Replay the selected handler locally.")
-    run_parser.add_argument("--cloud", choices=VALID_CLOUDS)
-    run_parser.add_argument("--runtime", choices=VALID_RUNTIMES, required=True)
-    run_parser.add_argument("--handler-path", required=True)
-    run_parser.add_argument("--input", default="-")
+    run_parser = subparsers.add_parser(
+        "run",
+        help="Replay the selected handler locally.",
+        description="Run the selected handler locally against a file or piped stdin event payload.",
+        epilog=format_examples(
+            "triage run --cloud gcp --runtime python --handler-path /abs/path --input /abs/path/sample.json",
+            "cat sample-event.json | triage run --cloud gcp --runtime go --handler-path /abs/path",
+        ),
+    )
+    run_parser.add_argument(
+        "--cloud",
+        choices=VALID_CLOUDS,
+        help="Cloud adapter to simulate. Falls back to project or local defaults when omitted.",
+    )
+    run_parser.add_argument("--runtime", choices=VALID_RUNTIMES, required=True, help="Handler runtime to execute.")
+    run_parser.add_argument("--handler-path", required=True, help="Absolute path to the local handler implementation.")
+    run_parser.add_argument(
+        "--input",
+        default="-",
+        help="Absolute path to a replay payload, or `-` to read the payload from stdin.",
+    )
     run_parser.set_defaults(command_path=("run",), handler=handle_run)
+    help_registry[("run",)] = run_parser
 
     return parser
 
@@ -139,7 +436,8 @@ def main(argv: list[str] | None = None, cwd: str | None = None, stdin=None, stdo
     )
     parser = build_parser()
     try:
-        args = parser.parse_args(argv)
+        with contextlib.redirect_stdout(context.stdout), contextlib.redirect_stderr(context.stderr):
+            args = parser.parse_args(argv)
     except SystemExit as exc:
         return int(exc.code)
     if not getattr(args, "command", None):
@@ -151,6 +449,9 @@ def main(argv: list[str] | None = None, cwd: str | None = None, stdin=None, stdo
     except UserError as exc:
         context.stderr.write(f"error: {exc}\n")
         return 1
+    except KeyboardInterrupt:
+        context.stderr.write("Interrupted.\n")
+        return 130
 
 
 def enforce_bootstrap_gate(command_path: tuple[str, ...]) -> None:
@@ -167,6 +468,29 @@ def enforce_bootstrap_gate(command_path: tuple[str, ...]) -> None:
             "Bootstrap is not complete yet. Finish `triage init` or use `triage settings validate` "
             "and `triage settings set llm.api_key <value>` before running operational commands."
         )
+
+
+def handle_help(args, context: Context) -> int:
+    topic = tuple(args.topic)
+    parser = args.help_registry.get(topic)
+    if parser is None:
+        requested = " ".join(args.topic)
+        raise UserError(
+            f"Unknown help topic `{requested}`. Run `triage -h` to list the available commands."
+        )
+    parser.print_help(context.stdout)
+    return 0
+
+
+def handle_group_help(args, context: Context) -> int:
+    args.parser_ref.print_help(context.stderr)
+    context.stderr.write(
+        f"\nerror: choose one `{args.group_name}` command: {', '.join(args.available_subcommands)}\n"
+    )
+    context.stderr.write(
+        f"hint: run `triage help {' '.join(args.help_path)}` or `triage {' '.join(args.help_path)} -h` for details.\n"
+    )
+    return 2
 
 
 def prompt(context: Context, label: str, default: str | None = None, secret: bool = False) -> str:
