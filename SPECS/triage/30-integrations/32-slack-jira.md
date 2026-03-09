@@ -33,13 +33,15 @@ Define the notification and ticketing contracts that turn reduced incidents into
   - occurrence count inside the aggregation window
   - source links when available
   - suggested fix when LLM analysis is enabled
-- Discord message must include the same incident facts required by Slack:
+- Discord message must include the same incident facts required by Slack, rendered as embed/card-style blocks:
   - service, severity, and environment
+  - bold section titles for readability
   - short summary
   - occurrence count inside the aggregation window
   - source links when available
   - Jira link when a ticket exists
   - suggested fix when LLM analysis is enabled
+  - label language follows `TRIAGE_LANGUAGE` (`english` or `spanish`)
 - Jira ticket must include:
   - summary using environment, service, and severity
   - issue type selected from `integrations.jira.issue_type`

@@ -32,6 +32,9 @@ def run_llm_client(
         raise UserError("Provider must be `openai`, `anthropic`, or `mock`.")
     if not chosen_model:
         chosen_model = default_model(chosen_provider)
+    language = str(request_payload.get("language") or "english").strip().lower()
+    if language not in ("english", "spanish"):
+        language = "english"
 
     key_env = api_key_env or default_api_key_env(chosen_provider)
     env_source = env if env is not None else os.environ
@@ -47,19 +50,22 @@ def run_llm_client(
             continue
         incident_id = str(incident.get("incident_id") or uuid.uuid4().hex[:16])
         if chosen_provider == "mock":
-            analysis = mock_analysis(incident)
+            analysis = mock_analysis(incident, language=language)
             raw_output = json.dumps(analysis)
         elif chosen_provider == "openai":
-            raw_output = call_openai(api_key, chosen_model, incident, timeout_seconds=timeout_seconds)
+            raw_output = call_openai(api_key, chosen_model, incident, language=language, timeout_seconds=timeout_seconds)
             analysis = parse_analysis_output(raw_output, incident)
         else:
-            raw_output = call_anthropic(api_key, chosen_model, incident, timeout_seconds=timeout_seconds)
+            raw_output = call_anthropic(api_key, chosen_model, incident, language=language, timeout_seconds=timeout_seconds)
             analysis = parse_analysis_output(raw_output, incident)
         results.append(
             {
                 "incident_id": incident_id,
                 "provider": chosen_provider,
                 "model": chosen_model,
+                "service": str(incident.get("service") or "unknown-service"),
+                "severity": str(incident.get("severity") or "UNKNOWN"),
+                "incident_summary": str(incident.get("incident_summary") or ""),
                 "analysis": analysis,
                 "raw_output": raw_output,
             }
@@ -71,6 +77,7 @@ def run_llm_client(
         "analyzed_at": datetime.now(timezone.utc).isoformat(),
         "provider": chosen_provider,
         "model": chosen_model,
+        "language": language,
         "results": results,
         "meta": {
             "input_incidents": len(incidents),
@@ -95,13 +102,13 @@ def default_model(provider: str) -> str:
     return "mock-1"
 
 
-def call_openai(api_key: str, model: str, incident: dict[str, Any], *, timeout_seconds: int) -> str:
+def call_openai(api_key: str, model: str, incident: dict[str, Any], *, language: str, timeout_seconds: int) -> str:
     payload = {
         "model": model,
         "response_format": {"type": "json_object"},
         "messages": [
-            {"role": "system", "content": system_prompt()},
-            {"role": "user", "content": user_prompt(incident)},
+            {"role": "system", "content": system_prompt(language)},
+            {"role": "user", "content": user_prompt(incident, language)},
         ],
     }
     response = http_json(
@@ -116,12 +123,12 @@ def call_openai(api_key: str, model: str, incident: dict[str, Any], *, timeout_s
         return json.dumps(response)
 
 
-def call_anthropic(api_key: str, model: str, incident: dict[str, Any], *, timeout_seconds: int) -> str:
+def call_anthropic(api_key: str, model: str, incident: dict[str, Any], *, language: str, timeout_seconds: int) -> str:
     payload = {
         "model": model,
         "max_tokens": 1000,
-        "system": system_prompt(),
-        "messages": [{"role": "user", "content": user_prompt(incident)}],
+        "system": system_prompt(language),
+        "messages": [{"role": "user", "content": user_prompt(incident, language)}],
     }
     response = http_json(
         "https://api.anthropic.com/v1/messages",
@@ -163,23 +170,44 @@ def http_json(url: str, payload: dict[str, Any], *, headers: dict[str, str], tim
     return parsed
 
 
-def system_prompt() -> str:
+def system_prompt(language: str) -> str:
+    lang_instruction = (
+        "Write all textual values in Spanish."
+        if language == "spanish"
+        else "Write all textual values in English."
+    )
     return (
         "You are an incident triage assistant. Return STRICT JSON only with fields: "
         "summary, suspected_cause, suggested_fix, confidence, safe_to_escalate, "
         "files_or_area_to_check, tests_to_run. "
-        "Do not add markdown."
+        "Do not add markdown. "
+        + lang_instruction
     )
 
 
-def user_prompt(incident: dict[str, Any]) -> str:
-    return "Analyze this prepared incident JSON and propose a fix:\n" + json.dumps(incident, ensure_ascii=False)
+def user_prompt(incident: dict[str, Any], language: str) -> str:
+    label = (
+        "Analyze this prepared incident JSON and propose a fix in Spanish:\n"
+        if language == "spanish"
+        else "Analyze this prepared incident JSON and propose a fix in English:\n"
+    )
+    return label + json.dumps(incident, ensure_ascii=False)
 
 
-def mock_analysis(incident: dict[str, Any]) -> dict[str, Any]:
+def mock_analysis(incident: dict[str, Any], *, language: str) -> dict[str, Any]:
     summary = str(incident.get("incident_summary") or incident.get("error_message") or "No summary")
     severity = str(incident.get("severity") or "INFO")
     service = str(incident.get("service") or "unknown-service")
+    if language == "spanish":
+        return {
+            "summary": f"{service}: {summary}",
+            "suspected_cause": "Posible problema de codigo o dependencia inferido desde la evidencia.",
+            "suggested_fix": "Revisar cambios recientes en el flujo afectado, validar salud de dependencias y ajustar retries/timeouts.",
+            "confidence": 0.52 if severity == "ERROR" else 0.68,
+            "safe_to_escalate": severity in ("ERROR", "CRITICAL", "ALERT", "EMERGENCY"),
+            "files_or_area_to_check": [],
+            "tests_to_run": ["unitarias", "integracion"],
+        }
     return {
         "summary": f"{service}: {summary}",
         "suspected_cause": "Service dependency or application code issue inferred from prepared evidence.",

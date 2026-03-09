@@ -12,10 +12,10 @@ Define the isolated CLI-first workflow that prepares incidents for LLM analysis,
   - `triage llm-request`
   - `triage llm-client`
   - `triage llm-resolve` one-command end-to-end flow
+  - `triage notify`
   - repository URL resolution and clone/context enrichment for `llm-prep`
   - canonical payload contracts and examples
 - Out of scope:
-  - notifier delivery
   - cloud runtime integration details
 
 ## Responsibilities
@@ -54,6 +54,7 @@ Define the isolated CLI-first workflow that prepares incidents for LLM analysis,
   - output schema: `llm-request.v1`
   - behavior:
     - choose provider and model
+    - choose response language from `TRIAGE_LANGUAGE` (`english` or `spanish`)
     - model resolution order:
       - `--model` (if provided)
       - provider-specific env (`TRIAGE_OPENAI_MODEL` or `TRIAGE_ANTHROPIC_MODEL`)
@@ -96,6 +97,27 @@ This command persists intermediate artifacts in `artifact-dir`:
   - otherwise use `anthropic` when `ANTHROPIC_API_KEY` is present
   - if both keys are present, prefer `openai`
   - if no key is present, fallback to `mock` for a coarse local analysis
+
+Optional notify step:
+
+```bash
+.venv/bin/python -m triage notify \
+  --input "$(pwd)/llm-analysis.json" \
+  --target discord \
+  --dry-run
+```
+
+Or notify directly from resolve:
+
+```bash
+cat events.json | .venv/bin/python -m triage llm-resolve \
+  --cloud gcp \
+  --runtime go \
+  --provider openai \
+  --notify \
+  --notify-target discord \
+  --output "$(pwd)/llm-analysis.json"
+```
 
 1. Prepare incidents:
 

@@ -338,6 +338,81 @@ class CliTests(unittest.TestCase):
         self.assertTrue(os.path.exists(os.path.join(artifact_dir, "llm-request.json")))
         self.assertTrue(os.path.exists(os.path.join(artifact_dir, "llm-analysis.json")))
 
+    def test_llm_resolve_with_notify_writes_notify_artifact(self):
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": "gateway timeout while charging card",
+            }
+        )
+        artifact_dir = os.path.join(self.work_dir, "resolve-notify-artifacts")
+        fake_notify = {
+            "schema_version": "llm-notify.v1",
+            "targets": ["discord"],
+            "dry_run": True,
+            "results": [{"target": "discord", "status": "simulated"}],
+            "meta": {"attempted": 1, "sent": 0, "simulated": 1, "skipped": 0},
+        }
+        with mock.patch("triage.cli.notify_analysis", return_value=fake_notify):
+            code, stdout, stderr = self.run_cli(
+                [
+                    "llm-resolve",
+                    "--cloud",
+                    "gcp",
+                    "--runtime",
+                    "python",
+                    "--provider",
+                    "mock",
+                    "--notify",
+                    "--notify-target",
+                    "discord",
+                    "--notify-dry-run",
+                    "--artifact-dir",
+                    artifact_dir,
+                ],
+                input_text=payload,
+            )
+        self.assertEqual(code, 0, msg=stderr)
+        self.assertEqual(json.loads(stdout)["schema_version"], "llm-analysis.v1")
+        self.assertTrue(os.path.exists(os.path.join(artifact_dir, "llm-notify.json")))
+
+    def test_notify_command_works_with_dry_run(self):
+        analysis_path = os.path.join(self.work_dir, "llm-analysis.json")
+        analysis_payload = {
+            "schema_version": "llm-analysis.v1",
+            "results": [
+                {
+                    "incident_id": "abc123",
+                    "provider": "mock",
+                    "model": "mock-1",
+                    "analysis": {
+                        "summary": "Timeout on DB",
+                        "suspected_cause": "Pool saturation",
+                        "suggested_fix": "Tune pool and query",
+                        "confidence": 0.7,
+                        "safe_to_escalate": True,
+                        "files_or_area_to_check": ["internal/db/repo.go"],
+                        "tests_to_run": ["integration"],
+                    },
+                }
+            ],
+        }
+        with open(analysis_path, "w", encoding="utf-8") as handle:
+            json.dump(analysis_payload, handle)
+        with mock.patch.dict(
+            os.environ,
+            {"DISCORD_WEBHOOK_URL": "https://discord.example/webhook"},
+            clear=False,
+        ):
+            code, stdout, stderr = self.run_cli(
+                ["notify", "--input", analysis_path, "--target", "discord", "--dry-run"]
+            )
+        self.assertEqual(code, 0, msg=stderr)
+        report = json.loads(stdout)
+        self.assertEqual(report["schema_version"], "llm-notify.v1")
+        self.assertEqual(report["meta"]["simulated"], 1)
+
     def test_llm_resolve_auto_provider_prefers_openai_when_both_keys_exist(self):
         payload = json.dumps(
             {

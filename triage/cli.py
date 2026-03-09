@@ -19,6 +19,7 @@ from .llm_prep.repo_context import checkout_repo, enrich_prepared_with_repo_cont
 from .llm_request import build_llm_request_payload, run_llm_client
 from .llm_request.client import default_model
 from .local_run import load_env_file, run_local
+from .notifier import VALID_TARGETS, notify_analysis
 from .project import (
     config_where,
     effective_view,
@@ -50,6 +51,7 @@ ALLOWED_WITHOUT_STATE = {
     ("llm-request",),
     ("llm-client",),
     ("llm-resolve",),
+    ("notify",),
     ("config", "show"),
     ("config", "where"),
     ("config", "wizard"),
@@ -636,8 +638,43 @@ def build_parser() -> argparse.ArgumentParser:
     llm_resolve_parser.add_argument("--max-tokens", type=int, default=1200)
     llm_resolve_parser.add_argument("--api-key-env")
     llm_resolve_parser.add_argument("--timeout-seconds", type=int, default=30)
+    llm_resolve_parser.add_argument("--notify", action="store_true", help="Send notifications after analysis.")
+    llm_resolve_parser.add_argument(
+        "--notify-target",
+        action="append",
+        choices=VALID_TARGETS,
+        default=[],
+        help="Notifier target(s). May be repeated. Defaults to env/config resolution when omitted.",
+    )
+    llm_resolve_parser.add_argument(
+        "--notify-dry-run",
+        action="store_true",
+        help="Build notifier payloads without sending HTTP requests.",
+    )
     llm_resolve_parser.set_defaults(command_path=("llm-resolve",), handler=handle_llm_resolve)
     help_registry[("llm-resolve",)] = llm_resolve_parser
+
+    notify_parser = subparsers.add_parser(
+        "notify",
+        help="Send llm-analysis results to Slack, Discord, or Jira.",
+        description="Dispatch notifications from a llm-analysis JSON payload using env-backed credentials.",
+        epilog=format_examples(
+            "triage notify --input /abs/llm-analysis.json --target discord",
+            "triage notify --input /abs/llm-analysis.json --target slack --target jira --dry-run",
+        ),
+    )
+    notify_parser.add_argument("--input", required=True, help="Absolute path to `llm-analysis` JSON payload.")
+    notify_parser.add_argument(
+        "--target",
+        action="append",
+        choices=VALID_TARGETS,
+        default=[],
+        help="Notifier target(s). May be repeated. Defaults to env/config resolution when omitted.",
+    )
+    notify_parser.add_argument("--dry-run", action="store_true", help="Build payloads without sending requests.")
+    notify_parser.add_argument("--output", help="Optional absolute path for notifier report JSON.")
+    notify_parser.set_defaults(command_path=("notify",), handler=handle_notify)
+    help_registry[("notify",)] = notify_parser
 
     return parser
 
@@ -1144,6 +1181,7 @@ def handle_llm_request(args, context: Context) -> int:
     with open(args.input, "r", encoding="utf-8") as handle:
         prepared = json_load_or_user_error(handle.read(), "llm-prep")
     env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
+    language = resolve_language_setting(env)
     model = resolve_request_model(
         provider=args.provider,
         explicit_model=args.model,
@@ -1156,6 +1194,7 @@ def handle_llm_request(args, context: Context) -> int:
         prepared,
         provider=args.provider,
         model=model,
+        language=language,
         max_tokens=args.max_tokens,
     )
     rendered = render_json(payload)
@@ -1219,6 +1258,7 @@ def handle_llm_resolve(args, context: Context) -> int:
 
     env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
     provider = resolve_auto_provider(args.provider, env, context.cwd)
+    language = resolve_language_setting(env)
     args.cost_profile = resolve_cost_profile(args, env)
     apply_cost_profile(args)
 
@@ -1289,6 +1329,7 @@ def handle_llm_resolve(args, context: Context) -> int:
         prepared,
         provider=provider,
         model=model,
+        language=language,
         max_tokens=args.max_tokens,
     )
     analysis = run_llm_client(
@@ -1299,6 +1340,18 @@ def handle_llm_resolve(args, context: Context) -> int:
         env=env,
         timeout_seconds=args.timeout_seconds,
     )
+
+    project = load_project_config(context.cwd, optional=True)
+    notify_report = None
+    if args.notify:
+        targets = resolve_notify_targets(args.notify_target, env, project)
+        notify_report = notify_analysis(
+            analysis,
+            targets=targets,
+            env=env,
+            project=project,
+            dry_run=bool(args.notify_dry_run),
+        )
 
     artifact_dir = args.artifact_dir or os.path.join(context.cwd, ".triage", "build", "local", "llm-resolve")
     os.makedirs(artifact_dir, exist_ok=True)
@@ -1311,6 +1364,9 @@ def handle_llm_resolve(args, context: Context) -> int:
         handle.write(request_rendered)
     with open(os.path.join(artifact_dir, "llm-analysis.json"), "w", encoding="utf-8") as handle:
         handle.write(analysis_rendered)
+    if notify_report is not None:
+        with open(os.path.join(artifact_dir, "llm-notify.json"), "w", encoding="utf-8") as handle:
+            handle.write(render_json(notify_report))
 
     if args.output:
         os.makedirs(os.path.dirname(args.output), exist_ok=True)
@@ -1318,6 +1374,37 @@ def handle_llm_resolve(args, context: Context) -> int:
             handle.write(analysis_rendered)
     else:
         context.stdout.write(analysis_rendered)
+    return 0
+
+
+def handle_notify(args, context: Context) -> int:
+    if not os.path.isabs(args.input):
+        raise UserError("`--input` must be an absolute path.")
+    if args.output and not os.path.isabs(args.output):
+        raise UserError("`--output` must be an absolute path.")
+    env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
+    with open(args.input, "r", encoding="utf-8") as handle:
+        analysis_payload = json_load_or_user_error(handle.read(), "llm-analysis")
+    project = load_project_config(context.cwd, optional=True)
+    targets = resolve_notify_targets(args.target, env, project)
+    report = notify_analysis(
+        analysis_payload,
+        targets=targets,
+        env=env,
+        project=project,
+        dry_run=bool(args.dry_run),
+    )
+    rendered = render_json(report)
+    if args.output:
+        os.makedirs(os.path.dirname(args.output), exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as handle:
+            handle.write(rendered)
+    else:
+        context.stdout.write(rendered)
+    target_dir = os.path.join(context.cwd, ".triage", "build", "local", "notify")
+    os.makedirs(target_dir, exist_ok=True)
+    with open(os.path.join(target_dir, "last-notify.json"), "w", encoding="utf-8") as handle:
+        handle.write(rendered)
     return 0
 
 
@@ -1438,6 +1525,71 @@ def resolve_auto_provider(explicit_provider: str | None, env: dict[str, str], cw
         if configured in ("openai", "anthropic", "mock"):
             return configured
     return "mock"
+
+
+def resolve_notify_targets(
+    explicit_targets: list[str],
+    env: dict[str, str],
+    project: dict[str, Any] | None,
+) -> list[str]:
+    picked = [item for item in explicit_targets if item in VALID_TARGETS]
+    if picked:
+        return dedupe_strings(picked)
+    env_targets = parse_repo_urls_from_env(str(env.get("TRIAGE_NOTIFIER_TARGETS", "")).strip())
+    env_picked = [item.lower() for item in env_targets if item.lower() in VALID_TARGETS]
+    if env_picked:
+        return dedupe_strings(env_picked)
+    if isinstance(project, dict):
+        integrations = project.get("integrations") if isinstance(project.get("integrations"), dict) else {}
+        routing = str((integrations or {}).get("routing") or "").strip().lower()
+        derived: list[str] = []
+        if routing == "both":
+            derived.extend(["slack", "discord"])
+        elif routing in ("slack", "discord"):
+            derived.append(routing)
+        jira_cfg = (integrations or {}).get("jira") if isinstance((integrations or {}).get("jira"), dict) else {}
+        if bool(jira_cfg.get("enabled")):
+            derived.append("jira")
+        if derived:
+            return dedupe_strings(derived)
+    fallback = []
+    if str(env.get("DISCORD_WEBHOOK_URL", "")).strip():
+        fallback.append("discord")
+    if str(env.get("SLACK_WEBHOOK_URL", "")).strip():
+        fallback.append("slack")
+    if (
+        str(env.get("JIRA_BASE_URL", "")).strip()
+        and str(env.get("JIRA_PROJECT_KEY", "")).strip()
+        and str(env.get("JIRA_EMAIL", "")).strip()
+        and str(env.get("JIRA_API_TOKEN", "")).strip()
+    ):
+        fallback.append("jira")
+    if fallback:
+        return dedupe_strings(fallback)
+    raise UserError(
+        "No notifier targets resolved. Pass `--target`, set `TRIAGE_NOTIFIER_TARGETS`, "
+        "or configure webhook/Jira env vars."
+    )
+
+
+def dedupe_strings(values: list[str]) -> list[str]:
+    output = []
+    seen = set()
+    for value in values:
+        if value in seen:
+            continue
+        seen.add(value)
+        output.append(value)
+    return output
+
+
+def resolve_language_setting(env: dict[str, str]) -> str:
+    raw = str(env.get("TRIAGE_LANGUAGE", "")).strip().lower()
+    if not raw:
+        return "english"
+    if raw not in ("english", "spanish"):
+        raise UserError("Invalid TRIAGE_LANGUAGE. Expected `english` or `spanish`.")
+    return raw
 
 
 def resolve_request_model(

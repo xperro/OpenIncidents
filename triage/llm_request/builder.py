@@ -14,12 +14,15 @@ def build_llm_request_payload(
     *,
     provider: str,
     model: str,
+    language: str = "english",
     max_tokens: int = 1200,
 ) -> dict[str, Any]:
     if provider not in ("openai", "anthropic", "mock"):
         raise UserError("`--provider` must be `openai`, `anthropic`, or `mock`.")
     if not model.strip():
         raise UserError("`--model` must not be empty.")
+    if language not in ("english", "spanish"):
+        raise UserError("`language` must be `english` or `spanish`.")
     incidents = prepared.get("incidents")
     if not isinstance(incidents, list):
         raise UserError("Input must contain an `incidents` list (output from `triage llm-prep`).")
@@ -76,6 +79,7 @@ def build_llm_request_payload(
         "created_at": created_at,
         "provider": provider,
         "model": model,
+        "language": language,
         "incidents": transformed,
         "meta": {
             "source_schema_version": prepared.get("schema_version"),

@@ -54,6 +54,10 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
   - environment variable `TRIAGE_LLM_MODEL` (or custom `--model-env-var`)
   - project `llm.model` when provider matches
   - provider default (`openai: gpt-4o-mini`)
+- LLM response language:
+  - controlled by environment variable `TRIAGE_LANGUAGE`
+  - allowed values: `english`, `spanish`
+  - defaults to `english` when unset
 - `llm-resolve` provider resolution when `--provider` is omitted:
   - `openai` when `OPENAI_API_KEY` exists
   - else `anthropic` when `ANTHROPIC_API_KEY` exists
@@ -118,7 +122,7 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
 - The provider and model are selected by the user rather than inferred automatically.
 - The raw LLM API token is stored only in the local CLI state file during the current documented phase.
 - The result must be strict JSON that can feed downstream notification logic.
-- The CLI must support an isolated pre-runtime flow (`llm-prep`, `llm-request`, `llm-client`) plus a one-command wrapper (`llm-resolve`) so LLM preparation and analysis can be validated before cloud runtime integration.
+- The CLI must support an isolated pre-runtime flow (`llm-prep`, `llm-request`, `llm-client`) plus a one-command wrapper (`llm-resolve`) and optional notifier dispatch (`notify`) so analysis can be validated and delivered before cloud runtime integration.
 
 ## Open questions
 

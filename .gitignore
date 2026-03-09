@@ -9,3 +9,8 @@ dist/
 .venv/
 triage.yaml
 /do-not-commit-this
+/llm-artifacts/*.json
+/llm-analysis*.json
+/llm-request*.json
+/prepared*.json
+/tmp-llm-*.json

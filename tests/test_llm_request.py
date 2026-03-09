@@ -31,6 +31,7 @@ class LLMRequestTests(unittest.TestCase):
         self.assertEqual(payload["schema_version"], "llm-request.v1")
         self.assertEqual(payload["provider"], "mock")
         self.assertEqual(payload["model"], "mock-1")
+        self.assertEqual(payload["language"], "english")
         self.assertEqual(len(payload["incidents"]), 1)
         self.assertEqual(payload["incidents"][0]["constraints"]["max_tokens"], 900)
 
@@ -56,8 +57,31 @@ class LLMRequestTests(unittest.TestCase):
         self.assertEqual(analysis["provider"], "mock")
         self.assertEqual(len(analysis["results"]), 1)
         self.assertIn("suggested_fix", analysis["results"][0]["analysis"])
+        self.assertIn("service", analysis["results"][0])
+        self.assertIn("severity", analysis["results"][0])
         # Ensure output remains JSON-serializable.
         json.dumps(analysis)
+
+    def test_run_llm_client_mock_respects_spanish_language(self):
+        request_payload = {
+            "schema_version": "llm-request.v1",
+            "request_id": "llmreq-1",
+            "provider": "mock",
+            "model": "mock-1",
+            "language": "spanish",
+            "incidents": [
+                {
+                    "incident_id": "abc123",
+                    "service": "approve-mrs",
+                    "severity": "ERROR",
+                    "incident_summary": "db timeout on postgres",
+                    "evidence": ["event-1"],
+                }
+            ],
+        }
+        analysis = run_llm_client(request_payload, provider="mock")
+        text = analysis["results"][0]["analysis"]["suspected_cause"].lower()
+        self.assertIn("posible", text)
 
     def test_run_llm_client_uses_injected_env_for_api_key(self):
         request_payload = {
