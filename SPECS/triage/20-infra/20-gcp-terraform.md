@@ -31,8 +31,10 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
 ## Contracts
 
 - MVP resource set:
+  - Cloud Build and IAM API enablement used by the CLI packaging and service-account provisioning paths
   - Artifact Registry repository
   - Cloud Run service account
+  - Pub/Sub push invoker service account
   - Cloud Run receiver service for `triage-handler`
   - Pub/Sub topic
   - Pub/Sub push subscription
@@ -48,8 +50,9 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
   - severity semantics follow the official [Google Cloud LogSeverity reference](https://cloud.google.com/logging/docs/reference/v2/rpc/google.logging.type#logseverity)
 - CLI workflow contract:
   - `triage` builds the selected handler from an absolute local path
-  - `triage` publishes the resulting image to Artifact Registry
-  - `triage` passes the resolved `container_image` into Terraform before `infra apply`
+  - `triage` bootstraps Artifact Registry before the image build when the repository does not exist yet
+  - `triage` publishes the resulting image to Artifact Registry through `gcloud builds submit`
+  - `triage` passes the resolved `container_image` into the final Terraform apply
 - Core Terraform inputs:
   - `project_id`
   - `region`
@@ -61,6 +64,11 @@ Define the GCP deployment contract for routing Cloud Logging events into the Ope
   - `cloud_run_service_name`
   - `artifact_registry_repository`
   - `container_image`
+- Default resource naming:
+  - `sink_name` defaults to `triage-<env>`
+  - `topic_name` defaults to `triage-<env>`
+  - `subscription_name` defaults to `triage-<env>-push`
+  - when `env: dev`, the documented default names are `triage-dev`, `triage-dev`, and `triage-dev-push`
 - Core Terraform outputs:
   - `pubsub_topic`
   - `pubsub_subscription`

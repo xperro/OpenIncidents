@@ -57,9 +57,9 @@ policy:
 gcp:
   project_id: my-project
   region: us-central1
-  sink_name: triage-prod
-  topic_name: triage-prod
-  subscription_name: triage-prod-push
+  sink_name: triage-dev
+  topic_name: triage-dev
+  subscription_name: triage-dev-push
   cloud_run_service_name: triage-handler
   artifact_registry_repository: triage
   log_filter_override: ""
@@ -142,6 +142,7 @@ integrations:
   - `local_path` is optional but recommended to avoid repeated clones and reduce token usage through bounded context extraction
 - Filter derivation rules:
   - GCP derives `log_filter` as `severity>=X` from `policy.severity_min` unless `gcp.log_filter_override` is set
+  - GCP default resource names derive from `env` as `triage-<env>` for `sink_name` and `topic_name`, and `triage-<env>-push` for `subscription_name`
   - AWS `json` derives `filter_pattern` from the configured `severity_field` unless `aws.filter_pattern_override` is set
   - AWS `space_delimited` derives `filter_pattern` from `severity_word_position` unless `aws.filter_pattern_override` is set
   - AWS `text` uses a broad subscription and applies severity filtering in the runtime unless `aws.filter_pattern_override` is set

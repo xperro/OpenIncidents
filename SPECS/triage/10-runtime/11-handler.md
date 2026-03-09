@@ -83,7 +83,7 @@ Define the shared runtime behavior of `triage-handler` as the serverless receive
     "data": "<base64-encoded Cloud Logging export payload>",
     "messageId": "1"
   },
-  "subscription": "projects/example/subscriptions/triage-prod-push"
+  "subscription": "projects/example/subscriptions/triage-dev-push"
 }
 ```
 

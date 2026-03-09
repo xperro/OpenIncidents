@@ -3,5 +3,5 @@
     "data": "ZXhhbXBsZQ==",
     "messageId": "1"
   },
-  "subscription": "projects/example/subscriptions/triage-prod-push"
+  "subscription": "projects/example/subscriptions/triage-dev-push"
 }

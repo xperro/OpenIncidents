@@ -39,6 +39,8 @@ Describe how the Python implementation of `triage-handler` should run locally an
   - package as a container image suitable for Cloud Run
   - expose the HTTP endpoint of the receiver service for Pub/Sub push delivery through the documented `Starlette` route layer
   - include a Python dependency manifest that pins the routing framework and any required ASGI runtime package for the container entrypoint
+  - the current CLI packaging path materializes a Docker build context and publishes the image with `gcloud builds submit`
+  - the generated build context must exclude local secret files such as `.env` and `.env.*` while preserving the checked-in `.env.example`
 - AWS packaging:
   - package as a zip artifact suitable for Lambda
   - expose a Lambda-compatible receiver service entrypoint

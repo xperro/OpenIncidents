@@ -9,6 +9,7 @@ import unittest
 from unittest import mock
 
 from triage.cli import main
+from triage.constants import VERSION
 from triage.errors import UserError
 from triage.infra import package_handler
 from triage.project import default_project_config, save_project_config
@@ -244,6 +245,13 @@ class CliTests(unittest.TestCase):
         with open(tfvars, "r", encoding="utf-8") as handle:
             generated = json.load(handle)
         self.assertEqual(generated["log_filter"], "severity>=ERROR")
+        self.assertEqual(generated["sink_name"], "triage-dev")
+        self.assertEqual(generated["topic_name"], "triage-dev")
+        self.assertEqual(generated["subscription_name"], "triage-dev-push")
+        self.assertEqual(
+            generated["container_image"],
+            f"us-central1-docker.pkg.dev/my-project/triage/triage-handler:python-dev-{VERSION}-pending",
+        )
 
     def test_run_executes_python_template_locally(self):
         self.complete_bootstrap()

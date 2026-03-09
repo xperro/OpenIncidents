@@ -94,6 +94,16 @@ This creates:
 - `.env.example`
 - `.triage/` scaffold directories in the working project
 
+For the GCP path, the scaffold now derives default resource names from `env`:
+
+- `gcp.sink_name`: `triage-<env>`
+- `gcp.topic_name`: `triage-<env>`
+- `gcp.subscription_name`: `triage-<env>-push`
+
+Example:
+
+- `env: dev` => `triage-dev`, `triage-dev`, `triage-dev-push`
+
 ### 4. Download an official handler template
 
 ```bash
@@ -109,6 +119,12 @@ The official template roots are:
 - `triage/templates/go/aws`
 - `triage/templates/python/gcp`
 - `triage/templates/python/aws`
+
+For GCP, `triage infra apply` now:
+
+- bootstraps Artifact Registry through Terraform
+- builds and publishes the selected handler as a container image with `gcloud builds submit`
+- runs the final Terraform apply against Cloud Run, Pub/Sub push, and Cloud Logging sink resources
 
 ### 5. Build release assets
 
@@ -130,7 +146,7 @@ This produces:
   - unit tests on Ubuntu, macOS, and Windows
   - a CLI smoke test with `python -m triage --help`
   - release bundle build and extraction checks
-- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.1`
+- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.2`
 
 ## Where Artifacts Are Uploaded
 
@@ -140,11 +156,11 @@ There are two upload targets:
 - Versioned releases upload downloadable assets to GitHub Releases for this repository:
   - [github.com/xperro/OpenIncidents/releases](https://github.com/xperro/OpenIncidents/releases)
 
-To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.1`, either by pushing the tag:
+To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.2`, either by pushing the tag:
 
 ```bash
-git tag v1.0.1
-git push origin v1.0.1
+git tag v1.0.2
+git push origin v1.0.2
 ```
 
 or by running the workflow manually from GitHub Actions with the `tag` input.
@@ -171,9 +187,9 @@ chmod +x triage
 CLI flow with GitHub CLI:
 
 ```bash
-gh release download v1.0.1 \
+gh release download v1.0.2 \
   --repo xperro/OpenIncidents \
-  --pattern 'triage_1.0.1_bundle.tar.gz' \
+  --pattern 'triage_1.0.2_bundle.tar.gz' \
   --dir ~/Downloads/openincidents
 ```
 
@@ -205,9 +221,9 @@ py .\triage.pyz --help
 CLI flow with GitHub CLI:
 
 ```powershell
-gh release download v1.0.1 `
+gh release download v1.0.2 `
   --repo xperro/OpenIncidents `
-  --pattern "triage_1.0.1_bundle.zip" `
+  --pattern "triage_1.0.2_bundle.zip" `
   --dir "$env:USERPROFILE\\Downloads\\OpenIncidents"
 ```
 

@@ -1,6 +1,6 @@
 """Shared constants for the ``triage`` CLI."""
 
-VERSION = "1.0.1"
+VERSION = "1.0.2"
 SCHEMA_VERSION = 1
 
 VALID_CLOUDS = ("gcp", "aws")
@@ -30,9 +30,9 @@ DEFAULT_POLICY = {
 DEFAULT_GCP = {
     "project_id": "my-project",
     "region": "us-central1",
-    "sink_name": "triage-prod",
-    "topic_name": "triage-prod",
-    "subscription_name": "triage-prod-push",
+    "sink_name": "",
+    "topic_name": "",
+    "subscription_name": "",
     "cloud_run_service_name": "triage-handler",
     "artifact_registry_repository": "triage",
     "log_filter_override": "",

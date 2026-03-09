@@ -481,8 +481,8 @@ def handle_infra_apply(args, context: Context) -> int:
     require_live_validation(cloud)
     require_runtime_validation(args.runtime)
     project = load_project_config(context.cwd)
-    artifact = package_handler(context.cwd, cloud, args.runtime, args.handler_path)
     generate_infra(context.cwd, project, cloud, args.runtime)
+    artifact = package_handler(context.cwd, cloud, args.runtime, args.handler_path, project)
     from .infra import generate_inputs
     from .project import write_file
 

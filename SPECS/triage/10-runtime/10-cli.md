@@ -68,6 +68,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - the preferred invocation on Windows is `triage <command>` through `triage.cmd`, with `py triage.pyz <command>` as the fallback form
   - the CLI must remain runnable without `pip`, `pipx`, or third-party package managers
   - GitHub Actions is the canonical automation path for CI validation and publishing GitHub Release assets as defined in [13-cli-release.md](13-cli-release.md)
+  - macOS may additionally consume the CLI through a Homebrew tap fed by the GitHub Actions release workflow defined in [13-cli-release.md](13-cli-release.md)
 - Init contract:
   - `triage init` is interactive and is the required bootstrap entrypoint for the CLI
   - `triage init` asks which cloud to validate now: `gcp`, `aws`, or both
@@ -123,6 +124,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage infra apply --cloud gcp|aws --runtime go|python --handler-path /abs/path`
   - `--handler-path` is required when packaging or building the receiver service for deployment
   - `--handler-path` must be absolute
+  - for the GCP path, `triage infra apply` first bootstraps Artifact Registry, then builds and publishes the selected handler image, and finally runs the full Terraform apply with the resolved `container_image`
   - for the Go GCP runtime, `--handler-path` must contain `go.mod`, `go.sum`, and `cmd/triage-handler/`
   - for the Go AWS runtime, `--handler-path` must contain `go.mod`, `go.sum`, and `cmd/triage-handler-lambda/`
   - for the Python GCP runtime, `--handler-path` must contain `requirements.txt`, `main.py`, and `app.py`

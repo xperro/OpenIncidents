@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import os
+import re
 from typing import Any
 
 from .constants import (
@@ -24,6 +25,11 @@ from .state import SECRET_SENTINEL, llm_env_name
 from .yaml_subset import dump_yaml, load_yaml
 
 PROJECT_FILE = "triage.yaml"
+LEGACY_GCP_RESOURCE_DEFAULTS = {
+    "sink_name": "triage-prod",
+    "topic_name": "triage-prod",
+    "subscription_name": "triage-prod-push",
+}
 
 CONFIG_WHERE = {
     "integrations.jira.enabled": {
@@ -114,15 +120,18 @@ def project_paths(cwd: str) -> dict[str, str]:
 
 
 def default_project_config(
-    cloud: str = "gcp", llm_provider: str = "none", llm_model: str | None = None
+    cloud: str = "gcp",
+    llm_provider: str = "none",
+    llm_model: str | None = None,
+    env: str = "dev",
 ) -> dict[str, Any]:
     llm = copy.deepcopy(DEFAULT_LLM)
     llm["provider"] = llm_provider
     llm["model"] = llm_model or ""
     llm["api_key_env"] = llm_env_name(llm_provider) or ""
-    return {
+    config = {
         "cloud": cloud,
-        "env": "dev",
+        "env": env,
         "repos": [],
         "policy": copy.deepcopy(DEFAULT_POLICY),
         "gcp": copy.deepcopy(DEFAULT_GCP),
@@ -130,10 +139,38 @@ def default_project_config(
         "llm": llm,
         "integrations": copy.deepcopy(DEFAULT_INTEGRATIONS),
     }
+    apply_gcp_resource_defaults(config)
+    return config
+
+
+def normalize_env_slug(value: Any) -> str:
+    slug = re.sub(r"[^a-z0-9-]+", "-", str(value or "").strip().lower()).strip("-")
+    return slug or "dev"
+
+
+def derive_gcp_resource_names(env: Any) -> dict[str, str]:
+    env_slug = normalize_env_slug(env)
+    prefix = f"triage-{env_slug}"
+    return {
+        "sink_name": prefix,
+        "topic_name": prefix,
+        "subscription_name": f"{prefix}-push",
+    }
+
+
+def apply_gcp_resource_defaults(config: dict[str, Any], raw_data: dict[str, Any] | None = None) -> None:
+    gcp = config.setdefault("gcp", copy.deepcopy(DEFAULT_GCP))
+    raw_gcp = (raw_data or {}).get("gcp", {}) if isinstance(raw_data, dict) else {}
+    derived = derive_gcp_resource_names(config.get("env") or "dev")
+    for key, value in derived.items():
+        current = gcp.get(key)
+        if key not in raw_gcp or not current or current == LEGACY_GCP_RESOURCE_DEFAULTS[key]:
+            gcp[key] = value
 
 
 def normalize_project_config(data: dict[str, Any] | None) -> dict[str, Any]:
-    config = default_project_config()
+    env = (data or {}).get("env", "dev")
+    config = default_project_config(env=env)
     if not data:
         return config
     for key in TOP_LEVEL_KEY_ORDER:
@@ -145,6 +182,7 @@ def normalize_project_config(data: dict[str, Any] | None) -> dict[str, Any]:
     config.setdefault("aws", copy.deepcopy(DEFAULT_AWS))
     config.setdefault("llm", copy.deepcopy(DEFAULT_LLM))
     config.setdefault("integrations", copy.deepcopy(DEFAULT_INTEGRATIONS))
+    apply_gcp_resource_defaults(config, data)
     return config
 
 
