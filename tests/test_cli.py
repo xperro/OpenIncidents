@@ -92,6 +92,85 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("Local CLI state does not exist yet", stderr)
 
+    def test_llm_prep_runs_without_init(self):
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": "gateway timeout while charging card",
+            }
+        )
+        code, stdout, stderr = self.run_cli(
+            ["llm-prep", "--cloud", "gcp", "--runtime", "python"],
+            input_text=payload,
+        )
+
+        self.assertEqual(code, 0, msg=stderr)
+        prepared = json.loads(stdout)
+        self.assertEqual(prepared["meta"]["prepared_incidents"], 1)
+        self.assertEqual(prepared["incidents"][0]["service"], "payments-orchestrator")
+
+    def test_llm_request_and_client_mock_run_without_init(self):
+        prepared_path = os.path.join(self.work_dir, "prepared.json")
+        request_path = os.path.join(self.work_dir, "request.json")
+        analysis_path = os.path.join(self.work_dir, "analysis.json")
+
+        prepared_payload = {
+            "schema_version": "llm-prep.v1",
+            "incidents": [
+                {
+                    "incident_id": "abc123",
+                    "service": "approve-mrs",
+                    "cloud": "gcp",
+                    "runtime_hint": "go",
+                    "severity": "ERROR",
+                    "count": 1,
+                    "window": {"first_seen": "2026-03-09T15:00:00Z", "last_seen": "2026-03-09T15:00:00Z"},
+                    "summary": "db timeout on postgres",
+                    "error_message": "db timeout on postgres",
+                    "stacktrace_excerpt": "",
+                    "source_link": "",
+                    "llm_input": {"incident_summary": "db timeout on postgres", "evidence": ["event-1"]},
+                }
+            ],
+        }
+        with open(prepared_path, "w", encoding="utf-8") as handle:
+            json.dump(prepared_payload, handle)
+
+        code, _, stderr = self.run_cli(
+            [
+                "llm-request",
+                "--input",
+                prepared_path,
+                "--provider",
+                "mock",
+                "--model",
+                "mock-1",
+                "--output",
+                request_path,
+            ]
+        )
+        self.assertEqual(code, 0, msg=stderr)
+        self.assertTrue(os.path.exists(request_path))
+
+        code, _, stderr = self.run_cli(
+            [
+                "llm-client",
+                "--input",
+                request_path,
+                "--provider",
+                "mock",
+                "--output",
+                analysis_path,
+            ]
+        )
+        self.assertEqual(code, 0, msg=stderr)
+        self.assertTrue(os.path.exists(analysis_path))
+        with open(analysis_path, "r", encoding="utf-8") as handle:
+            analysis = json.load(handle)
+        self.assertEqual(analysis["schema_version"], "llm-analysis.v1")
+        self.assertEqual(analysis["meta"]["analyzed_incidents"], 1)
+
     def test_init_creates_state_and_scaffold(self):
         fake_validation = ValidationResult(cloud="gcp", ok=True, checks=["gcloud: ok"])
         with mock.patch("triage.cli.validate_cloud", return_value=fake_validation):

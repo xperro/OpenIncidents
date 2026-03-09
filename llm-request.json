@@ -1,0 +1,198 @@
+{
+  "created_at": "2026-03-09T15:25:19.416881+00:00",
+  "incidents": [
+    {
+      "analysis_mode": "pre_repo",
+      "cloud": "gcp",
+      "constraints": {
+        "max_tokens": 1200,
+        "redaction_applied": true
+      },
+      "count": 1,
+      "error_message": "cpu usage at 97% for 5m, request latency p99=4.8s",
+      "evidence": [
+        "{\"timestamp\": \"2026-03-09T15:01:41Z\", \"severity\": \"CRITICAL\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"textPayload\": \"cpu usage at 97% for 5m, request latency p99=4.8s\"}"
+      ],
+      "incident_id": "ad7be215bec3c73a",
+      "incident_summary": "cpu usage at 97% for 5m, request latency p99=4.8s",
+      "repo_context": [],
+      "response_contract": {
+        "format": "json",
+        "required_fields": [
+          "summary",
+          "suspected_cause",
+          "suggested_fix",
+          "confidence",
+          "safe_to_escalate",
+          "files_or_area_to_check",
+          "tests_to_run"
+        ]
+      },
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "CRITICAL",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "window": {
+        "first_seen": "2026-03-09T15:01:41Z",
+        "last_seen": "2026-03-09T15:01:41Z"
+      }
+    },
+    {
+      "analysis_mode": "pre_repo",
+      "cloud": "gcp",
+      "constraints": {
+        "max_tokens": 1200,
+        "redaction_applied": true
+      },
+      "count": 1,
+      "error_message": "panic at internal/approvals/repository.go:187 in LoadApprovalByID",
+      "evidence": [
+        "{\"timestamp\": \"2026-03-09T15:01:02Z\", \"severity\": \"ERROR\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"jsonPayload\": {\"message\": \"panic: nil pointer dereference\", \"file\": \"internal/approvals/repository.go\", \"line\": 187, \"function\": \"LoadApprovalByID\"}, \"textPayload\": \"panic at internal/approvals/repository.go:187 in LoadApprovalByID\"}"
+      ],
+      "incident_id": "8f61a88da66f14a2",
+      "incident_summary": "panic at internal/approvals/repository.go:187 in LoadApprovalByID",
+      "repo_context": [],
+      "response_contract": {
+        "format": "json",
+        "required_fields": [
+          "summary",
+          "suspected_cause",
+          "suggested_fix",
+          "confidence",
+          "safe_to_escalate",
+          "files_or_area_to_check",
+          "tests_to_run"
+        ]
+      },
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "ERROR",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "window": {
+        "first_seen": "2026-03-09T15:01:02Z",
+        "last_seen": "2026-03-09T15:01:02Z"
+      }
+    },
+    {
+      "analysis_mode": "pre_repo",
+      "cloud": "gcp",
+      "constraints": {
+        "max_tokens": 1200,
+        "redaction_applied": true
+      },
+      "count": 1,
+      "error_message": "db deadlock detected in transaction update_approval_state",
+      "evidence": [
+        "{\"timestamp\": \"2026-03-09T15:00:23Z\", \"severity\": \"ERROR\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"textPayload\": \"db deadlock detected in transaction update_approval_state\"}"
+      ],
+      "incident_id": "a6309cdf89bc01af",
+      "incident_summary": "db deadlock detected in transaction update_approval_state",
+      "repo_context": [],
+      "response_contract": {
+        "format": "json",
+        "required_fields": [
+          "summary",
+          "suspected_cause",
+          "suggested_fix",
+          "confidence",
+          "safe_to_escalate",
+          "files_or_area_to_check",
+          "tests_to_run"
+        ]
+      },
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "ERROR",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "window": {
+        "first_seen": "2026-03-09T15:00:23Z",
+        "last_seen": "2026-03-09T15:00:23Z"
+      }
+    },
+    {
+      "analysis_mode": "pre_repo",
+      "cloud": "gcp",
+      "constraints": {
+        "max_tokens": 1200,
+        "redaction_applied": true
+      },
+      "count": 1,
+      "error_message": "db connection refused to postgres:5432",
+      "evidence": [
+        "{\"timestamp\": \"2026-03-09T15:00:11Z\", \"severity\": \"ERROR\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"textPayload\": \"db connection refused to postgres:5432\"}"
+      ],
+      "incident_id": "3799e24d31bb0ac3",
+      "incident_summary": "db connection refused to postgres:5432",
+      "repo_context": [],
+      "response_contract": {
+        "format": "json",
+        "required_fields": [
+          "summary",
+          "suspected_cause",
+          "suggested_fix",
+          "confidence",
+          "safe_to_escalate",
+          "files_or_area_to_check",
+          "tests_to_run"
+        ]
+      },
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "ERROR",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "window": {
+        "first_seen": "2026-03-09T15:00:11Z",
+        "last_seen": "2026-03-09T15:00:11Z"
+      }
+    },
+    {
+      "analysis_mode": "pre_repo",
+      "cloud": "gcp",
+      "constraints": {
+        "max_tokens": 1200,
+        "redaction_applied": true
+      },
+      "count": 1,
+      "error_message": "db timeout on postgres while fetching merge requests",
+      "evidence": [
+        "{\"timestamp\": \"2026-03-09T15:00:01Z\", \"severity\": \"ERROR\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"textPayload\": \"db timeout on postgres while fetching merge requests\"}"
+      ],
+      "incident_id": "9c65f1b97f392153",
+      "incident_summary": "db timeout on postgres while fetching merge requests",
+      "repo_context": [],
+      "response_contract": {
+        "format": "json",
+        "required_fields": [
+          "summary",
+          "suspected_cause",
+          "suggested_fix",
+          "confidence",
+          "safe_to_escalate",
+          "files_or_area_to_check",
+          "tests_to_run"
+        ]
+      },
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "ERROR",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "window": {
+        "first_seen": "2026-03-09T15:00:01Z",
+        "last_seen": "2026-03-09T15:00:01Z"
+      }
+    }
+  ],
+  "meta": {
+    "prepared_incidents": 5,
+    "source_schema_version": "llm-prep.v1"
+  },
+  "model": "mock-1",
+  "provider": "mock",
+  "request_id": "llmreq-a2e54300488e",
+  "schema_version": "llm-request.v1"
+}

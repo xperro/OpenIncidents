@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import json
 import os
 import sys
 from dataclasses import dataclass
@@ -12,6 +13,8 @@ from typing import Any
 from .constants import VALID_CLOUDS, VALID_LLM_PROVIDERS, VALID_ROUTINGS, VALID_RUNTIMES, VERSION
 from .errors import UserError
 from .infra import generate_infra, package_handler, terraform_apply, terraform_plan
+from .llm_prep import prepare_for_llm
+from .llm_request import build_llm_request_payload, run_llm_client
 from .local_run import run_local
 from .project import (
     config_where,
@@ -40,6 +43,9 @@ HELP_COMMAND_PATH = ("help",)
 ALLOWED_WITHOUT_STATE = {
     HELP_COMMAND_PATH,
     ("init",),
+    ("llm-prep",),
+    ("llm-request",),
+    ("llm-client",),
     ("config", "show"),
     ("config", "where"),
     ("config", "wizard"),
@@ -423,6 +429,112 @@ def build_parser() -> argparse.ArgumentParser:
     )
     run_parser.set_defaults(command_path=("run",), handler=handle_run)
     help_registry[("run",)] = run_parser
+
+    llm_prep_parser = subparsers.add_parser(
+        "llm-prep",
+        help="Prepare raw cloud events into compact LLM-ready incidents.",
+        description=(
+            "Decode and normalize mock cloud events, apply severity filtering, dedupe/grouping, "
+            "redaction, and context truncation to produce isolated LLM preparation output."
+        ),
+        epilog=format_examples(
+            "triage llm-prep --input /abs/path/events.json --cloud gcp --runtime go",
+            "cat events.json | triage llm-prep --cloud aws --runtime python",
+        ),
+    )
+    llm_prep_parser.add_argument(
+        "--input",
+        default="-",
+        help="Absolute path to a JSON payload, or `-` to read from stdin.",
+    )
+    llm_prep_parser.add_argument(
+        "--cloud",
+        choices=("auto",) + VALID_CLOUDS,
+        default="auto",
+        help="Cloud hint used during normalization.",
+    )
+    llm_prep_parser.add_argument(
+        "--runtime",
+        choices=("auto",) + VALID_RUNTIMES,
+        default="auto",
+        help="Runtime hint to include in prepared incidents.",
+    )
+    llm_prep_parser.add_argument(
+        "--severity-min",
+        default="ERROR",
+        help="Minimum severity to keep after normalization.",
+    )
+    llm_prep_parser.add_argument(
+        "--max-incidents",
+        type=int,
+        default=20,
+        help="Maximum number of grouped incidents in output.",
+    )
+    llm_prep_parser.add_argument(
+        "--max-context-chars",
+        type=int,
+        default=4000,
+        help="Maximum characters for summary/evidence fields.",
+    )
+    llm_prep_parser.add_argument(
+        "--max-stack-lines",
+        type=int,
+        default=20,
+        help="Maximum stacktrace lines to keep.",
+    )
+    llm_prep_parser.add_argument(
+        "--output",
+        help="Optional absolute path for JSON output. If omitted, prints to stdout.",
+    )
+    llm_prep_parser.set_defaults(command_path=("llm-prep",), handler=handle_llm_prep)
+    help_registry[("llm-prep",)] = llm_prep_parser
+
+    llm_request_parser = subparsers.add_parser(
+        "llm-request",
+        help="Build a canonical LLM request payload from llm-prep output.",
+        description="Transform prepared incidents into a strict request contract for provider clients.",
+        epilog=format_examples(
+            "triage llm-request --input /abs/prepared.json --provider mock --model mock-1",
+            "triage llm-request --input /abs/prepared.json --provider openai --model gpt-4.1 --output /abs/request.json",
+        ),
+    )
+    llm_request_parser.add_argument("--input", required=True, help="Absolute path to `llm-prep` JSON output.")
+    llm_request_parser.add_argument(
+        "--provider",
+        choices=("openai", "anthropic", "mock"),
+        required=True,
+        help="Target provider for downstream analysis.",
+    )
+    llm_request_parser.add_argument("--model", required=True, help="Provider model name.")
+    llm_request_parser.add_argument("--max-tokens", type=int, default=1200, help="Per-incident token budget.")
+    llm_request_parser.add_argument("--output", help="Optional absolute output path for the request payload JSON.")
+    llm_request_parser.set_defaults(command_path=("llm-request",), handler=handle_llm_request)
+    help_registry[("llm-request",)] = llm_request_parser
+
+    llm_client_parser = subparsers.add_parser(
+        "llm-client",
+        help="Send LLM request payloads to a provider and collect structured analysis.",
+        description="Execute incident analysis against mock/OpenAI/Anthropic using the canonical request payload.",
+        epilog=format_examples(
+            "triage llm-client --input /abs/request.json --provider mock",
+            "triage llm-client --input /abs/request.json --provider openai --api-key-env OPENAI_API_KEY --output /abs/analysis.json",
+        ),
+    )
+    llm_client_parser.add_argument("--input", required=True, help="Absolute path to `llm-request` JSON payload.")
+    llm_client_parser.add_argument(
+        "--provider",
+        choices=("openai", "anthropic", "mock"),
+        help="Provider override. Defaults to request payload provider.",
+    )
+    llm_client_parser.add_argument("--model", help="Model override. Defaults to request payload model.")
+    llm_client_parser.add_argument(
+        "--api-key-env",
+        help="Environment variable name for provider API key. Defaults by provider.",
+    )
+    llm_client_parser.add_argument("--timeout-seconds", type=int, default=30, help="HTTP timeout for provider calls.")
+    llm_client_parser.add_argument("--output", help="Optional absolute output path for analysis JSON.")
+    llm_client_parser.set_defaults(command_path=("llm-client",), handler=handle_llm_client)
+    help_registry[("llm-client",)] = llm_client_parser
 
     return parser
 
@@ -838,3 +950,117 @@ def handle_run(args, context: Context) -> int:
     )
     context.stdout.write(render_json(result))
     return 0
+
+
+def handle_llm_prep(args, context: Context) -> int:
+    if args.input != "-" and not os.path.isabs(args.input):
+        raise UserError("`--input` must be absolute when a file path is provided.")
+    if args.output and not os.path.isabs(args.output):
+        raise UserError("`--output` must be an absolute path.")
+    if args.max_incidents <= 0:
+        raise UserError("`--max-incidents` must be greater than zero.")
+    if args.max_context_chars <= 0:
+        raise UserError("`--max-context-chars` must be greater than zero.")
+    if args.max_stack_lines <= 0:
+        raise UserError("`--max-stack-lines` must be greater than zero.")
+
+    if args.input == "-":
+        payload = context.stdin.read()
+    else:
+        with open(args.input, "r", encoding="utf-8") as handle:
+            payload = handle.read()
+
+    prepared = prepare_for_llm(
+        payload,
+        cloud=args.cloud,
+        runtime_hint=args.runtime,
+        severity_min=str(args.severity_min).upper(),
+        max_incidents=args.max_incidents,
+        max_context_chars=args.max_context_chars,
+        max_stack_lines=args.max_stack_lines,
+    )
+    rendered = render_json(prepared)
+
+    if args.output:
+        os.makedirs(os.path.dirname(args.output), exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as handle:
+            handle.write(rendered)
+    else:
+        context.stdout.write(rendered)
+
+    target_dir = os.path.join(context.cwd, ".triage", "build", "local", "llm-prep")
+    os.makedirs(target_dir, exist_ok=True)
+    with open(os.path.join(target_dir, "last-prep.json"), "w", encoding="utf-8") as handle:
+        handle.write(rendered)
+    return 0
+
+
+def handle_llm_request(args, context: Context) -> int:
+    if not os.path.isabs(args.input):
+        raise UserError("`--input` must be an absolute path.")
+    if args.output and not os.path.isabs(args.output):
+        raise UserError("`--output` must be an absolute path.")
+    if args.max_tokens <= 0:
+        raise UserError("`--max-tokens` must be greater than zero.")
+    with open(args.input, "r", encoding="utf-8") as handle:
+        prepared = json_load_or_user_error(handle.read(), "llm-prep")
+
+    payload = build_llm_request_payload(
+        prepared,
+        provider=args.provider,
+        model=args.model,
+        max_tokens=args.max_tokens,
+    )
+    rendered = render_json(payload)
+    if args.output:
+        os.makedirs(os.path.dirname(args.output), exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as handle:
+            handle.write(rendered)
+    else:
+        context.stdout.write(rendered)
+    target_dir = os.path.join(context.cwd, ".triage", "build", "local", "llm-request")
+    os.makedirs(target_dir, exist_ok=True)
+    with open(os.path.join(target_dir, "last-request.json"), "w", encoding="utf-8") as handle:
+        handle.write(rendered)
+    return 0
+
+
+def handle_llm_client(args, context: Context) -> int:
+    if not os.path.isabs(args.input):
+        raise UserError("`--input` must be an absolute path.")
+    if args.output and not os.path.isabs(args.output):
+        raise UserError("`--output` must be an absolute path.")
+    if args.timeout_seconds <= 0:
+        raise UserError("`--timeout-seconds` must be greater than zero.")
+
+    with open(args.input, "r", encoding="utf-8") as handle:
+        request_payload = json_load_or_user_error(handle.read(), "llm-request")
+    analysis = run_llm_client(
+        request_payload,
+        provider=args.provider,
+        model=args.model,
+        api_key_env=args.api_key_env,
+        timeout_seconds=args.timeout_seconds,
+    )
+    rendered = render_json(analysis)
+    if args.output:
+        os.makedirs(os.path.dirname(args.output), exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as handle:
+            handle.write(rendered)
+    else:
+        context.stdout.write(rendered)
+    target_dir = os.path.join(context.cwd, ".triage", "build", "local", "llm-client")
+    os.makedirs(target_dir, exist_ok=True)
+    with open(os.path.join(target_dir, "last-analysis.json"), "w", encoding="utf-8") as handle:
+        handle.write(rendered)
+    return 0
+
+
+def json_load_or_user_error(raw_payload: str, label: str) -> dict[str, Any]:
+    try:
+        payload = json.loads(raw_payload)
+    except json.JSONDecodeError as exc:
+        raise UserError(f"Input for `{label}` must be valid JSON: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise UserError(f"Input for `{label}` must be a JSON object.")
+    return payload

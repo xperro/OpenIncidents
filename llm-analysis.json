@@ -1,0 +1,103 @@
+{
+  "analyzed_at": "2026-03-09T15:25:46.167134+00:00",
+  "meta": {
+    "analyzed_incidents": 5,
+    "input_incidents": 5
+  },
+  "model": "mock-1",
+  "provider": "mock",
+  "request_id": "llmreq-a2e54300488e",
+  "results": [
+    {
+      "analysis": {
+        "confidence": 0.68,
+        "files_or_area_to_check": [],
+        "safe_to_escalate": true,
+        "suggested_fix": "Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.",
+        "summary": "approve-mrs: cpu usage at 97% for 5m, request latency p99=4.8s",
+        "suspected_cause": "Service dependency or application code issue inferred from prepared evidence.",
+        "tests_to_run": [
+          "unit",
+          "integration"
+        ]
+      },
+      "incident_id": "ad7be215bec3c73a",
+      "model": "mock-1",
+      "provider": "mock",
+      "raw_output": "{\"summary\": \"approve-mrs: cpu usage at 97% for 5m, request latency p99=4.8s\", \"suspected_cause\": \"Service dependency or application code issue inferred from prepared evidence.\", \"suggested_fix\": \"Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.\", \"confidence\": 0.68, \"safe_to_escalate\": true, \"files_or_area_to_check\": [], \"tests_to_run\": [\"unit\", \"integration\"]}"
+    },
+    {
+      "analysis": {
+        "confidence": 0.52,
+        "files_or_area_to_check": [],
+        "safe_to_escalate": true,
+        "suggested_fix": "Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.",
+        "summary": "approve-mrs: panic at internal/approvals/repository.go:187 in LoadApprovalByID",
+        "suspected_cause": "Service dependency or application code issue inferred from prepared evidence.",
+        "tests_to_run": [
+          "unit",
+          "integration"
+        ]
+      },
+      "incident_id": "8f61a88da66f14a2",
+      "model": "mock-1",
+      "provider": "mock",
+      "raw_output": "{\"summary\": \"approve-mrs: panic at internal/approvals/repository.go:187 in LoadApprovalByID\", \"suspected_cause\": \"Service dependency or application code issue inferred from prepared evidence.\", \"suggested_fix\": \"Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.\", \"confidence\": 0.52, \"safe_to_escalate\": true, \"files_or_area_to_check\": [], \"tests_to_run\": [\"unit\", \"integration\"]}"
+    },
+    {
+      "analysis": {
+        "confidence": 0.52,
+        "files_or_area_to_check": [],
+        "safe_to_escalate": true,
+        "suggested_fix": "Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.",
+        "summary": "approve-mrs: db deadlock detected in transaction update_approval_state",
+        "suspected_cause": "Service dependency or application code issue inferred from prepared evidence.",
+        "tests_to_run": [
+          "unit",
+          "integration"
+        ]
+      },
+      "incident_id": "a6309cdf89bc01af",
+      "model": "mock-1",
+      "provider": "mock",
+      "raw_output": "{\"summary\": \"approve-mrs: db deadlock detected in transaction update_approval_state\", \"suspected_cause\": \"Service dependency or application code issue inferred from prepared evidence.\", \"suggested_fix\": \"Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.\", \"confidence\": 0.52, \"safe_to_escalate\": true, \"files_or_area_to_check\": [], \"tests_to_run\": [\"unit\", \"integration\"]}"
+    },
+    {
+      "analysis": {
+        "confidence": 0.52,
+        "files_or_area_to_check": [],
+        "safe_to_escalate": true,
+        "suggested_fix": "Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.",
+        "summary": "approve-mrs: db connection refused to postgres:5432",
+        "suspected_cause": "Service dependency or application code issue inferred from prepared evidence.",
+        "tests_to_run": [
+          "unit",
+          "integration"
+        ]
+      },
+      "incident_id": "3799e24d31bb0ac3",
+      "model": "mock-1",
+      "provider": "mock",
+      "raw_output": "{\"summary\": \"approve-mrs: db connection refused to postgres:5432\", \"suspected_cause\": \"Service dependency or application code issue inferred from prepared evidence.\", \"suggested_fix\": \"Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.\", \"confidence\": 0.52, \"safe_to_escalate\": true, \"files_or_area_to_check\": [], \"tests_to_run\": [\"unit\", \"integration\"]}"
+    },
+    {
+      "analysis": {
+        "confidence": 0.52,
+        "files_or_area_to_check": [],
+        "safe_to_escalate": true,
+        "suggested_fix": "Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.",
+        "summary": "approve-mrs: db timeout on postgres while fetching merge requests",
+        "suspected_cause": "Service dependency or application code issue inferred from prepared evidence.",
+        "tests_to_run": [
+          "unit",
+          "integration"
+        ]
+      },
+      "incident_id": "9c65f1b97f392153",
+      "model": "mock-1",
+      "provider": "mock",
+      "raw_output": "{\"summary\": \"approve-mrs: db timeout on postgres while fetching merge requests\", \"suspected_cause\": \"Service dependency or application code issue inferred from prepared evidence.\", \"suggested_fix\": \"Review recent changes around the failing path, validate dependency health, and add retries/timeouts as needed.\", \"confidence\": 0.52, \"safe_to_escalate\": true, \"files_or_area_to_check\": [], \"tests_to_run\": [\"unit\", \"integration\"]}"
+    }
+  ],
+  "schema_version": "llm-analysis.v1"
+}

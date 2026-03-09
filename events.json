@@ -1,0 +1,62 @@
+[
+  {
+    "timestamp": "2026-03-09T15:00:01Z",
+    "severity": "ERROR",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "textPayload": "db timeout on postgres while fetching merge requests"
+  },
+  {
+    "timestamp": "2026-03-09T15:00:11Z",
+    "severity": "ERROR",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "textPayload": "db connection refused to postgres:5432"
+  },
+  {
+    "timestamp": "2026-03-09T15:00:23Z",
+    "severity": "ERROR",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "textPayload": "db deadlock detected in transaction update_approval_state"
+  },
+  {
+    "timestamp": "2026-03-09T15:01:02Z",
+    "severity": "ERROR",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "jsonPayload": {
+      "message": "panic: nil pointer dereference",
+      "file": "internal/approvals/repository.go",
+      "line": 187,
+      "function": "LoadApprovalByID"
+    },
+    "textPayload": "panic at internal/approvals/repository.go:187 in LoadApprovalByID"
+  },
+  {
+    "timestamp": "2026-03-09T15:01:41Z",
+    "severity": "CRITICAL",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "textPayload": "cpu usage at 97% for 5m, request latency p99=4.8s"
+  },
+  {
+    "timestamp": "2026-03-09T15:02:03Z",
+    "severity": "WARNING",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "textPayload": "retrying external api call attempt=2"
+  },
+  {
+    "timestamp": "2026-03-09T15:02:09Z",
+    "severity": "INFO",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "textPayload": "healthcheck ok"
+  },
+  {
+    "timestamp": "2026-03-09T15:02:21Z",
+    "severity": "DEBUG",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "textPayload": "sql query took 12ms select id,status from approvals"
+  },
+  {
+    "timestamp": "2026-03-09T15:02:36Z",
+    "severity": "NOTICE",
+    "resource": { "labels": { "service_name": "approve-mrs" } },
+    "textPayload": "cache warmup completed"
+  }
+]
