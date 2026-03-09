@@ -1,6 +1,6 @@
 """Shared constants for the ``triage`` CLI."""
 
-VERSION = "1.0.7"
+VERSION = "1.0.8"
 SCHEMA_VERSION = 1
 
 VALID_CLOUDS = ("gcp", "aws")

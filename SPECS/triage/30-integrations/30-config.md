@@ -156,7 +156,7 @@ integrations:
   - `gcp.sinks[]` items define multiple Cloud Logging sinks that share the top-level `gcp.topic_name` and `gcp.subscription_name`
   - `gcp.sinks[].filter` is the base inclusion clause for that sink
   - `gcp.sinks[].include_severity_at_or_above` appends `severity>=X` to the sink inclusion filter
-  - `gcp.sinks[].include_repo_name_like` appends a repo-like inclusion clause over common Cloud Logging fields such as `logName`, `textPayload`, `resource.labels.service_name`, and `protoPayload.resourceName`
+  - `gcp.sinks[].include_repo_name_like` appends a repo-like inclusion clause over the most stable Cloud Logging infrastructure fields for this workflow: `logName`, exact `resource.labels.service_name`, and `protoPayload.resourceName`
   - `gcp.sinks[].exclude_severities` expands into one Cloud Logging sink exclusion using exact comparisons such as `severity=DEBUG`
   - `gcp.sinks[].exclude_severity_at_or_above` and `gcp.sinks[].exclude_repo_name_like` remain compatibility fields for broader exclusions, but the preferred contract is inclusion-first filtering plus optional exact exclusions
   - the deployed GCP handler receives sink routing metadata from infrastructure and uses it to infer `repo_name`, `sink_name`, and a clearer `error_message` from the pushed log payload

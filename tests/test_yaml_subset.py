@@ -84,16 +84,20 @@ class YamlSubsetTests(unittest.TestCase):
         self.assertEqual(loaded["gcp"]["sinks"][0]["repo_name"], "approve-mrs-dev")
         self.assertEqual(sinks[0]["repo_match_like"], "approve-mrs")
         self.assertIn('severity>=INFO', sinks[0]["filter"])
+        self.assertIn('resource.labels.service_name = "approve-mrs"', sinks[0]["filter"])
         self.assertIn("protoPayload.resourceName", sinks[0]["filter"])
+        self.assertNotIn("resource.labels.revision_name", sinks[0]["filter"])
         self.assertEqual(sinks[0]["exclusions"][0]["filter"], "severity=DEBUG")
         self.assertIn("include_repo_name_like: approve-mrs", rendered)
 
     def test_gcp_repo_match_filter_covers_common_fields(self):
         rendered = build_gcp_repo_match_filter("request-approvals")
 
-        self.assertIn('textPayload =~ ".*request\\\\-approvals.*"', rendered)
-        self.assertIn("resource.labels.service_name", rendered)
-        self.assertIn("protoPayload.authenticationInfo.principalEmail", rendered)
+        self.assertIn('logName =~ "request\\\\-approvals"', rendered)
+        self.assertIn('resource.labels.service_name = "request-approvals"', rendered)
+        self.assertIn("protoPayload.resourceName", rendered)
+        self.assertNotIn("textPayload", rendered)
+        self.assertNotIn("resource.labels.revision_name", rendered)
 
 
 if __name__ == "__main__":

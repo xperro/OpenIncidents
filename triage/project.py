@@ -187,24 +187,21 @@ def escape_gcp_log_filter_regex(value: str) -> str:
     return escaped.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def escape_gcp_log_filter_string(value: str) -> str:
+    return str(value or "").strip().replace("\\", "\\\\").replace('"', '\\"')
+
+
 def build_gcp_repo_match_filter(value: str) -> str:
+    literal = escape_gcp_log_filter_string(value)
     regex = escape_gcp_log_filter_regex(value)
-    if not regex:
+    if not literal or not regex:
         return ""
-    pattern = f".*{regex}.*"
-    fields = (
-        "logName",
-        "textPayload",
-        "jsonPayload.message",
-        "jsonPayload.repo_name",
-        "jsonPayload.repository",
-        'labels."run.googleapis.com/service_name"',
-        "resource.labels.service_name",
-        "resource.labels.revision_name",
-        "protoPayload.resourceName",
-        "protoPayload.authenticationInfo.principalEmail",
+    clauses = (
+        f'logName =~ "{regex}"',
+        f'resource.labels.service_name = "{literal}"',
+        f'protoPayload.resourceName =~ "{regex}"',
     )
-    return " OR ".join(f'{field} =~ "{pattern}"' for field in fields)
+    return " OR ".join(clauses)
 
 
 def join_gcp_filter_clauses(*clauses: str) -> str:
