@@ -146,7 +146,7 @@ This produces:
   - unit tests on Ubuntu, macOS, and Windows
   - a CLI smoke test with `python -m triage --help`
   - release bundle build and extraction checks
-- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.2`
+- [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) builds and publishes release assets for tags like `v1.0.3`
 
 ## Where Artifacts Are Uploaded
 
@@ -156,11 +156,11 @@ There are two upload targets:
 - Versioned releases upload downloadable assets to GitHub Releases for this repository:
   - [github.com/xperro/OpenIncidents/releases](https://github.com/xperro/OpenIncidents/releases)
 
-To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.2`, either by pushing the tag:
+To publish a real release, trigger [`.github/workflows/release.yml`](/Users/cristobalcontreras/GitHub/OpenIncidents/.github/workflows/release.yml) with a tag like `v1.0.3`, either by pushing the tag:
 
 ```bash
-git tag v1.0.2
-git push origin v1.0.2
+git tag v1.0.3
+git push origin v1.0.3
 ```
 
 or by running the workflow manually from GitHub Actions with the `tag` input.
@@ -187,9 +187,9 @@ chmod +x triage
 CLI flow with GitHub CLI:
 
 ```bash
-gh release download v1.0.2 \
+gh release download v1.0.3 \
   --repo xperro/OpenIncidents \
-  --pattern 'triage_1.0.2_bundle.tar.gz' \
+  --pattern 'triage_1.0.3_bundle.tar.gz' \
   --dir ~/Downloads/openincidents
 ```
 
@@ -221,9 +221,9 @@ py .\triage.pyz --help
 CLI flow with GitHub CLI:
 
 ```powershell
-gh release download v1.0.2 `
+gh release download v1.0.3 `
   --repo xperro/OpenIncidents `
-  --pattern "triage_1.0.2_bundle.zip" `
+  --pattern "triage_1.0.3_bundle.zip" `
   --dir "$env:USERPROFILE\\Downloads\\OpenIncidents"
 ```
 

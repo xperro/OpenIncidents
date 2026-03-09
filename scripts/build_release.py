@@ -28,7 +28,7 @@ IGNORED_SUFFIXES = (".pyc", ".pyo", ".tmp", ".swp")
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--tag", help="Git tag to validate against, for example v1.0.2")
+    parser.add_argument("--tag", help="Git tag to validate against, for example v1.0.3")
     parser.add_argument(
         "--repository",
         help="GitHub repository slug in owner/name form. Defaults to GITHUB_REPOSITORY or origin remote.",
