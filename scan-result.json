@@ -1,0 +1,21 @@
+{
+  "artifacts": {
+    "analysis": "/home/jorge/Escritorio/AgentIncident/OpenIncidents/.triage/build/local/scan/llm-analysis.json",
+    "artifact_dir": "/home/jorge/Escritorio/AgentIncident/OpenIncidents/.triage/build/local/scan",
+    "notify": "/home/jorge/Escritorio/AgentIncident/OpenIncidents/.triage/build/local/scan/llm-notify.json",
+    "prepared": "/home/jorge/Escritorio/AgentIncident/OpenIncidents/.triage/build/local/scan/prepared.json",
+    "request": "/home/jorge/Escritorio/AgentIncident/OpenIncidents/.triage/build/local/scan/llm-request.json"
+  },
+  "cloud": "gcp",
+  "language": "english",
+  "meta": {
+    "analyzed_incidents": 0,
+    "notified": true,
+    "prepared_incidents": 0,
+    "pulled_messages": 0
+  },
+  "model": "gpt-4o-mini",
+  "provider": "openai",
+  "schema_version": "scan-result.v1",
+  "source": "gcp-pubsub"
+}

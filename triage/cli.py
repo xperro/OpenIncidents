@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import contextlib
 import json
 import os
@@ -40,7 +41,7 @@ from .state import (
     state_path,
 )
 from .templates import download_template
-from .validation import validate_cloud, validate_runtime
+from .validation import run_subprocess, validate_cloud, validate_runtime
 
 
 HELP_COMMAND_PATH = ("help",)
@@ -52,6 +53,7 @@ ALLOWED_WITHOUT_STATE = {
     ("llm-client",),
     ("llm-resolve",),
     ("notify",),
+    ("scan",),
     ("config", "show"),
     ("config", "where"),
     ("config", "wizard"),
@@ -675,6 +677,63 @@ def build_parser() -> argparse.ArgumentParser:
     notify_parser.add_argument("--output", help="Optional absolute path for notifier report JSON.")
     notify_parser.set_defaults(command_path=("notify",), handler=handle_notify)
     help_registry[("notify",)] = notify_parser
+
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help="Run end-to-end scan: ingest logs, analyze with LLM, and notify.",
+        description=(
+            "Fetch events from GCP Pub/Sub or from input JSON, run llm-prep/request/client, "
+            "and optionally notify Slack/Discord/Jira."
+        ),
+        epilog=format_examples(
+            "triage scan --cloud gcp --runtime go --notify --notify-target discord",
+            "triage scan --cloud gcp --runtime go --input /abs/events.json --provider openai --notify",
+        ),
+    )
+    scan_parser.add_argument("--cloud", choices=("gcp", "aws"), default="gcp")
+    scan_parser.add_argument("--runtime", choices=("auto",) + VALID_RUNTIMES, default="auto")
+    scan_parser.add_argument(
+        "--input",
+        help="Optional absolute input JSON path. If omitted, scan pulls from cloud source.",
+    )
+    scan_parser.add_argument(
+        "--source",
+        choices=("gcp-pubsub",),
+        default="gcp-pubsub",
+        help="Cloud source for event ingestion.",
+    )
+    scan_parser.add_argument("--subscription", help="GCP Pub/Sub subscription override.")
+    scan_parser.add_argument("--project-id", help="GCP project id override.")
+    scan_parser.add_argument("--limit", type=int, default=50, help="Max messages to pull from source.")
+    scan_parser.add_argument("--init-config", action="store_true", help="Create default triage config when missing.")
+    scan_parser.add_argument("--provider", choices=("openai", "anthropic", "mock"))
+    scan_parser.add_argument("--model")
+    scan_parser.add_argument("--model-env-var", default="TRIAGE_LLM_MODEL")
+    scan_parser.add_argument("--max-tokens", type=int, default=1200)
+    scan_parser.add_argument("--api-key-env")
+    scan_parser.add_argument("--timeout-seconds", type=int, default=30)
+    scan_parser.add_argument("--severity-min", default="ERROR")
+    scan_parser.add_argument("--max-incidents", type=int, default=20)
+    scan_parser.add_argument("--max-context-chars", type=int, default=4000)
+    scan_parser.add_argument("--max-stack-lines", type=int, default=20)
+    scan_parser.add_argument("--repo-url", action="append", default=[])
+    scan_parser.add_argument("--repo-path", action="append", default=[])
+    scan_parser.add_argument("--repo-branch", default="main")
+    scan_parser.add_argument("--repo-env-var", default="TRIAGE_REPO_URLS")
+    scan_parser.add_argument("--repo-max-files", type=int, default=3)
+    scan_parser.add_argument("--repo-max-snippet-lines", type=int, default=80)
+    scan_parser.add_argument("--cost-profile", choices=("custom", "lean", "balanced", "deep"), default=None)
+    scan_parser.add_argument("--cost-profile-env-var", default="TRIAGE_LLM_COST_PROFILE")
+    scan_parser.add_argument("--notify", action="store_true")
+    scan_parser.add_argument("--notify-target", action="append", choices=VALID_TARGETS, default=[])
+    scan_parser.add_argument("--notify-dry-run", action="store_true")
+    scan_parser.add_argument(
+        "--artifact-dir",
+        help="Optional absolute directory for artifacts (`prepared.json`, `llm-request.json`, `llm-analysis.json`).",
+    )
+    scan_parser.add_argument("--output", help="Optional absolute path for final scan result JSON.")
+    scan_parser.set_defaults(command_path=("scan",), handler=handle_scan)
+    help_registry[("scan",)] = scan_parser
 
     return parser
 
@@ -1408,6 +1467,160 @@ def handle_notify(args, context: Context) -> int:
     return 0
 
 
+def handle_scan(args, context: Context) -> int:
+    env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
+    apply_scan_env_defaults(args, env)
+    if args.input and not os.path.isabs(args.input):
+        raise UserError("`--input` must be an absolute path when provided.")
+    if args.output and not os.path.isabs(args.output):
+        raise UserError("`--output` must be an absolute path.")
+    if args.artifact_dir and not os.path.isabs(args.artifact_dir):
+        raise UserError("`--artifact-dir` must be an absolute path.")
+    if args.limit <= 0:
+        raise UserError("`--limit` must be greater than zero.")
+
+    ensure_scan_project_config(context.cwd, init_config=args.init_config)
+    project = load_project_config(context.cwd, optional=True)
+    if args.cloud != "gcp":
+        raise UserError("`triage scan` currently supports only `--cloud gcp`.")
+
+    args.cost_profile = resolve_cost_profile(args, env)
+    apply_cost_profile(args)
+    language = resolve_language_setting(env)
+    provider = resolve_auto_provider(args.provider, env, context.cwd)
+
+    raw_payload = ""
+    pulled_count = 0
+    if args.input:
+        with open(args.input, "r", encoding="utf-8") as handle:
+            raw_payload = handle.read()
+    else:
+        project_id = args.project_id or ((project or {}).get("gcp") or {}).get("project_id")
+        subscription = args.subscription or ((project or {}).get("gcp") or {}).get("subscription_name")
+        if not project_id or not subscription:
+            raise UserError("Missing GCP `project_id` or `subscription_name` for scan source.")
+        envelopes, pulled_count = fetch_gcp_pubsub_envelopes(
+            context.cwd,
+            project_id=str(project_id),
+            subscription=str(subscription),
+            limit=args.limit,
+            env=env,
+        )
+        raw_payload = json.dumps(envelopes)
+
+    prepared = prepare_for_llm(
+        raw_payload,
+        cloud=args.cloud,
+        runtime_hint=args.runtime,
+        severity_min=str(args.severity_min).upper(),
+        max_incidents=args.max_incidents,
+        max_context_chars=args.max_context_chars,
+        max_stack_lines=args.max_stack_lines,
+    )
+    repo_sources = build_repo_sources_for_llm(args, context, env)
+    if repo_sources:
+        prepared = enrich_prepared_with_repo_context(
+            prepared,
+            repo_sources,
+            max_files_per_incident=args.repo_max_files,
+            max_snippet_lines=args.repo_max_snippet_lines,
+        )
+        prepared.setdefault("meta", {})
+        prepared["meta"]["repo_sources"] = [
+            {
+                "repo_name": source.repo_name,
+                "repo_url": source.repo_url,
+                "branch": source.branch,
+                "repo_dir": source.repo_dir,
+            }
+            for source in repo_sources
+        ]
+        prepared["meta"]["repo_context_enabled"] = True
+    else:
+        prepared.setdefault("meta", {})
+        prepared["meta"]["repo_context_enabled"] = False
+    prepared["meta"]["cost_profile"] = args.cost_profile
+
+    model = resolve_request_model(
+        provider=provider,
+        explicit_model=args.model,
+        model_env_var=args.model_env_var,
+        env=env,
+        cwd=context.cwd,
+    )
+    request_payload = build_llm_request_payload(
+        prepared,
+        provider=provider,
+        model=model,
+        language=language,
+        max_tokens=args.max_tokens,
+    )
+    analysis = run_llm_client(
+        request_payload,
+        provider=provider,
+        model=model,
+        api_key_env=args.api_key_env,
+        env=env,
+        timeout_seconds=args.timeout_seconds,
+    )
+
+    notify_report = None
+    if args.notify:
+        targets = resolve_notify_targets(args.notify_target, env, project)
+        notify_report = notify_analysis(
+            analysis,
+            targets=targets,
+            env=env,
+            project=project,
+            dry_run=bool(args.notify_dry_run),
+        )
+
+    artifact_dir = args.artifact_dir or os.path.join(context.cwd, ".triage", "build", "local", "scan")
+    os.makedirs(artifact_dir, exist_ok=True)
+    prepared_rendered = render_json(prepared)
+    request_rendered = render_json(request_payload)
+    analysis_rendered = render_json(analysis)
+    with open(os.path.join(artifact_dir, "prepared.json"), "w", encoding="utf-8") as handle:
+        handle.write(prepared_rendered)
+    with open(os.path.join(artifact_dir, "llm-request.json"), "w", encoding="utf-8") as handle:
+        handle.write(request_rendered)
+    with open(os.path.join(artifact_dir, "llm-analysis.json"), "w", encoding="utf-8") as handle:
+        handle.write(analysis_rendered)
+    if notify_report is not None:
+        with open(os.path.join(artifact_dir, "llm-notify.json"), "w", encoding="utf-8") as handle:
+            handle.write(render_json(notify_report))
+
+    result = {
+        "schema_version": "scan-result.v1",
+        "cloud": args.cloud,
+        "provider": provider,
+        "model": model,
+        "language": language,
+        "source": args.source,
+        "meta": {
+            "pulled_messages": pulled_count,
+            "prepared_incidents": (prepared.get("meta") or {}).get("prepared_incidents", 0),
+            "analyzed_incidents": (analysis.get("meta") or {}).get("analyzed_incidents", 0),
+            "notified": bool(notify_report),
+        },
+        "artifacts": {
+            "artifact_dir": artifact_dir,
+            "prepared": os.path.join(artifact_dir, "prepared.json"),
+            "request": os.path.join(artifact_dir, "llm-request.json"),
+            "analysis": os.path.join(artifact_dir, "llm-analysis.json"),
+            "notify": os.path.join(artifact_dir, "llm-notify.json") if notify_report is not None else "",
+        },
+    }
+    rendered = render_json(result)
+    if args.output:
+        os.makedirs(os.path.dirname(args.output), exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as handle:
+            handle.write(rendered)
+    else:
+        context.stdout.write(rendered)
+    return 0
+
+
 def json_load_or_user_error(raw_payload: str, label: str) -> dict[str, Any]:
     try:
         payload = json.loads(raw_payload)
@@ -1586,6 +1799,195 @@ def dedupe_strings(values: list[str]) -> list[str]:
         seen.add(value)
         output.append(value)
     return output
+
+
+def apply_scan_env_defaults(args, env: dict[str, str]) -> None:
+    if not args.input:
+        env_input = str(env.get("TRIAGE_SCAN_INPUT", "")).strip()
+        if env_input:
+            args.input = env_input
+    if not args.project_id:
+        env_project = str(env.get("TRIAGE_SCAN_PROJECT_ID", "")).strip()
+        if env_project:
+            args.project_id = env_project
+    if not args.subscription:
+        env_subscription = str(env.get("TRIAGE_SCAN_SUBSCRIPTION", "")).strip()
+        if env_subscription:
+            args.subscription = env_subscription
+    if not args.provider:
+        env_provider = str(env.get("TRIAGE_SCAN_PROVIDER", "")).strip().lower()
+        if env_provider in ("openai", "anthropic", "mock"):
+            args.provider = env_provider
+    if not args.model:
+        env_model = str(env.get("TRIAGE_SCAN_MODEL", "")).strip()
+        if env_model:
+            args.model = env_model
+    if not args.notify and env_bool_true(str(env.get("TRIAGE_SCAN_NOTIFY", "")).strip()):
+        args.notify = True
+    if not args.notify_target:
+        env_targets = parse_repo_urls_from_env(str(env.get("TRIAGE_SCAN_NOTIFY_TARGETS", "")).strip())
+        picked = [item.lower() for item in env_targets if item.lower() in VALID_TARGETS]
+        if picked:
+            args.notify_target = dedupe_strings(picked)
+    if args.repo_branch == "main":
+        env_branch = str(env.get("TRIAGE_SCAN_REPO_BRANCH", "")).strip()
+        if env_branch:
+            args.repo_branch = env_branch
+    if args.runtime == "auto":
+        env_runtime = str(env.get("TRIAGE_SCAN_RUNTIME", "")).strip().lower()
+        if env_runtime in ("auto", "go", "python"):
+            args.runtime = env_runtime
+    if args.cloud == "gcp":
+        env_cloud = str(env.get("TRIAGE_SCAN_CLOUD", "")).strip().lower()
+        if env_cloud in ("gcp", "aws"):
+            args.cloud = env_cloud
+
+
+def env_bool_true(value: str) -> bool:
+    return str(value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def ensure_scan_project_config(cwd: str, *, init_config: bool) -> None:
+    path = project_file_path(cwd)
+    if os.path.exists(path):
+        return
+    if not init_config:
+        return
+    save_project_config(cwd, default_scan_project_config())
+
+
+def default_scan_project_config() -> dict[str, Any]:
+    return {
+        "cloud": "gcp",
+        "env": "dev",
+        "repos": [],
+        "policy": {
+            "severity_min": "INFO",
+            "jira_min_severity": "CRITICAL",
+            "window_seconds": 300,
+            "dedupe": True,
+            "max_llm_tokens": 2000,
+            "rate_limit_per_service_per_min": 6,
+        },
+        "gcp": {
+            "project_id": "gcp-course-2024",
+            "region": "southamerica-west1",
+            "sink_name": "triage-dev",
+            "topic_name": "triage-dev",
+            "subscription_name": "triage-dev-push",
+            "cloud_run_service_name": "triage-handler",
+            "artifact_registry_repository": "triage",
+            "log_filter_override": "",
+            "sinks": [
+                {
+                    "name": "approve-mrs-dev",
+                    "repo_name": "approve-mrs-dev",
+                    "description": "Export Cloud Run approval workflow logs for approve-mrs.",
+                    "filter": 'resource.type="cloud_run_revision"',
+                    "include_severity_at_or_above": "INFO",
+                    "include_repo_name_like": "approve-mrs",
+                    "exclude_severities": ["DEBUG"],
+                },
+                {
+                    "name": "request-approvals-dev",
+                    "repo_name": "request-approvals-dev",
+                    "description": "Export Cloud Run deployment and audit logs for request-approvals.",
+                    "filter": 'resource.type="cloud_run_revision" OR logName="projects/gcp-course-2024/logs/cloudaudit.googleapis.com%2Fsystem_event"',
+                    "include_severity_at_or_above": "INFO",
+                    "include_repo_name_like": "request-approvals",
+                    "exclude_severities": ["DEBUG"],
+                },
+            ],
+        },
+        "aws": {
+            "region": "us-east-1",
+            "log_group_name": "/aws/lambda/my-service",
+            "lambda_name": "triage-handler",
+            "package_format": "zip",
+            "filter_name": "triage-prod",
+            "log_format": "json",
+            "severity_field": "severity",
+            "severity_word_position": 1,
+            "filter_pattern_override": "",
+        },
+        "llm": {
+            "provider": "openai",
+            "model": "gpt-4",
+            "api_key_env": "OPENAI_API_KEY",
+        },
+        "integrations": {
+            "routing": "slack",
+            "slack": {"enabled": False, "webhook_env": "SLACK_WEBHOOK_URL"},
+            "discord": {"enabled": False, "webhook_env": "DISCORD_WEBHOOK_URL"},
+            "jira": {
+                "enabled": False,
+                "base_url": "https://example.atlassian.net",
+                "project_key": "ABC",
+                "email_env": "JIRA_EMAIL",
+                "token_env": "JIRA_API_TOKEN",
+            },
+        },
+    }
+
+
+def fetch_gcp_pubsub_envelopes(
+    cwd: str,
+    *,
+    project_id: str,
+    subscription: str,
+    limit: int,
+    env: dict[str, str],
+) -> tuple[list[dict[str, Any]], int]:
+    command = [
+        "gcloud",
+        "pubsub",
+        "subscriptions",
+        "pull",
+        subscription,
+        "--project",
+        project_id,
+        "--limit",
+        str(limit),
+        "--auto-ack",
+        "--format=json",
+    ]
+    result = run_subprocess(command, cwd=cwd, env=env)
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip()
+        raise UserError(f"Failed to pull from Pub/Sub subscription `{subscription}`: {detail}")
+    raw = result.stdout.strip() or "[]"
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise UserError(f"Unexpected Pub/Sub pull output: {exc}") from exc
+    if not isinstance(payload, list):
+        raise UserError("Unexpected Pub/Sub pull output: expected a JSON list.")
+
+    envelopes: list[dict[str, Any]] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        message = item.get("message")
+        if not isinstance(message, dict):
+            continue
+        data = str(message.get("data") or "").strip()
+        if not data:
+            continue
+        normalized_data = ensure_base64_data(data)
+        envelopes.append({"message": {"data": normalized_data}})
+    return envelopes, len(envelopes)
+
+
+def ensure_base64_data(value: str) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return raw
+    # If already valid base64, keep it.
+    try:
+        base64.b64decode(raw, validate=True)
+        return raw
+    except Exception:
+        return base64.b64encode(raw.encode("utf-8")).decode("ascii")
 
 
 def resolve_language_setting(env: dict[str, str]) -> str:
