@@ -87,7 +87,7 @@ jobs:
             echo
             echo "## Homebrew"
             echo
-            if [ -n \"${TAP_REPOSITORY}\" ]; then
+            if [ -n "${TAP_REPOSITORY}" ]; then
               echo "The workflow is configured to publish the Homebrew formula to \`${TAP_REPOSITORY}\` at \`Formula/triage.rb\`."
               echo
               echo "Install the latest Homebrew formula:"
@@ -104,7 +104,7 @@ jobs:
             else
               echo "Homebrew publication is not configured because \`HOMEBREW_TAP_REPOSITORY\` is empty."
             fi
-          } >> \"$GITHUB_STEP_SUMMARY\"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload release assets for downstream jobs
         uses: actions/upload-artifact@v4
