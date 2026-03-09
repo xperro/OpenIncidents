@@ -40,3 +40,11 @@ Question: At what point should cloud secret stores replace raw environment varia
 Current default: environment variables are acceptable for local development, and the per-user CLI local state file is acceptable for bootstrap-time LLM token persistence during the current documentation phase, but GCP Secret Manager, AWS Secrets Manager, or stronger local secret storage should become the expected path before production hardening.
 
 Affected docs: [00-product-overview.md](00-product-overview.md), [10-runtime/12-cli-state.md](10-runtime/12-cli-state.md), [20-infra/20-gcp-terraform.md](20-infra/20-gcp-terraform.md), [20-infra/21-aws-terraform.md](20-infra/21-aws-terraform.md), [30-integrations/30-config.md](30-integrations/30-config.md), [30-integrations/31-llm.md](30-integrations/31-llm.md), [40-governance/40-security-iam.md](40-governance/40-security-iam.md)
+
+## OQ-108
+
+Question: When repository snippets are added to `repo_context`, should LLM execution stay one-call-per-incident or switch to batched calls with strict shared token budgets?
+
+Current default: keep one call per incident with aggressive local filtering and bounded context; revisit batching only after repository-context precision and token profiles are measured in real workloads.
+
+Affected docs: [10-runtime/10-cli.md](10-runtime/10-cli.md), [30-integrations/31-llm.md](30-integrations/31-llm.md)

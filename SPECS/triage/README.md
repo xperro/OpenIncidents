@@ -34,6 +34,7 @@ This directory is the canonical planning workspace for the `triage` specificatio
 - [30-integrations/31-llm.md](30-integrations/31-llm.md): optional LLM integration contract
 - [30-integrations/32-slack-jira.md](30-integrations/32-slack-jira.md): Slack, Discord, and Jira notification contracts
 - [30-integrations/33-config-operations.md](30-integrations/33-config-operations.md): operator workflow for finding and changing configuration
+- [30-integrations/34-llm-prep-workflow.md](30-integrations/34-llm-prep-workflow.md): isolated `llm-prep -> llm-request -> llm-client` workflow and payload examples
 - [40-governance/40-security-iam.md](40-governance/40-security-iam.md): canonical security and IAM policy
 - [90-open-questions.md](90-open-questions.md): open decision backlog
 

@@ -46,6 +46,9 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage help [command ...]`
   - `triage h [command ...]`
   - `triage init`
+  - `triage llm-prep`
+  - `triage llm-request`
+  - `triage llm-client`
   - `triage settings show`
   - `triage settings set <key> <value>`
   - `triage settings validate --cloud gcp|aws|all`
@@ -58,8 +61,8 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage infra apply`
   - `triage run`
 - Bootstrap gating:
-  - if no local CLI state exists, only `help`, `version`, `init`, `config show`, `config where`, and `config wizard` are allowed
-  - if local CLI state exists but `bootstrap_complete` is `false`, only `help`, `version`, `init`, `settings show`, `settings set`, `settings validate`, `config show`, `config where`, and `config wizard` are allowed
+  - if no local CLI state exists, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `config show`, `config where`, and `config wizard` are allowed
+  - if local CLI state exists but `bootstrap_complete` is `false`, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `settings show`, `settings set`, `settings validate`, `config show`, `config where`, and `config wizard` are allowed
   - `template download`, `infra generate`, `infra plan`, `infra apply`, and `run` are blocked until bootstrap is complete
 - Help and error behavior:
   - `triage help` and `triage h` print the same top-level help as `triage -h`
@@ -175,6 +178,16 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `.env` may be used for local development secrets and must stay untracked
   - configured repository Git URLs and credential env vars must be resolvable for context enrichment
   - when `triage run` uses the default `--input -`, the operator must pipe a replay payload on stdin; if stdin is interactive, the CLI fails fast with guidance instead of blocking silently
+- LLM preparation and execution prerequisites:
+  - `triage llm-prep` accepts JSON from `--input` (absolute path) or stdin and emits `llm-prep.v1` payloads
+  - `triage llm-prep` repository enrichment sources are additive: `--repo-url`, `TRIAGE_REPO_URLS`, and `triage.yaml repos[].git_url`
+  - `TRIAGE_REPO_URLS` accepts either a JSON array or comma/newline-separated repository URLs
+  - when `triage.yaml repos[].auth` is declared, `triage llm-prep` resolves `username_env` and `token_env` before cloning
+  - `triage llm-request` transforms `llm-prep.v1` payloads into `llm-request.v1` payloads for a selected provider/model
+  - `triage llm-client` executes `llm-request.v1` payloads and emits `llm-analysis.v1` output
+  - `triage llm-client` supports `mock`, `openai`, and `anthropic` provider modes
+  - `mock` is local-development-only and does not call an external API
+  - `openai` and `anthropic` require API keys in environment variables
 - Override model:
   - flags may override selected config values without redefining the full config schema
 

@@ -31,6 +31,7 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
   - `none`
   - `openai`
   - `anthropic`
+  - `mock` (CLI local testing only; not a production runtime provider)
 - Model selection remains free-form and user-provided.
 - Provider bootstrap contract:
   - `triage init` requires the user to choose `none`, `openai`, or `anthropic`
@@ -43,6 +44,43 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
   - `suggested_fix`
   - `confidence`
   - `safe_to_escalate`
+- Local contract pipeline:
+  - `llm-prep.v1` is the normalized and redacted incident-preparation payload emitted by `triage llm-prep`
+  - `llm-request.v1` is the provider-ready request contract emitted by `triage llm-request`
+  - `llm-analysis.v1` is the analysis result contract emitted by `triage llm-client`
+- Repository context sources for `llm-prep`:
+  - explicit `--repo-url` flags
+  - environment variable `TRIAGE_REPO_URLS` (JSON array or comma/newline-separated)
+  - `triage.yaml` `repos[].git_url`, with optional `repos[].auth` env indirection
+- Required `llm-prep.v1` incident fields:
+  - `incident_id`
+  - `cloud`
+  - `runtime_hint`
+  - `service`
+  - `severity`
+  - `count`
+  - `window.first_seen`
+  - `window.last_seen`
+  - `incident_summary`
+  - `error_message`
+  - `stacktrace_excerpt`
+  - `evidence[]`
+  - `repo_context[]`
+  - `analysis_mode`
+- Required `llm-request.v1` fields:
+  - `provider`
+  - `model`
+  - `incidents[]` (carrying the required `llm-prep.v1` incident subset)
+  - `constraints.max_tokens`
+  - `response_contract.required_fields`
+- Required `llm-analysis.v1` per-incident `analysis` fields:
+  - `summary`
+  - `suspected_cause`
+  - `suggested_fix`
+  - `confidence`
+  - `safe_to_escalate`
+  - `files_or_area_to_check`
+  - `tests_to_run`
 - Safety constraints:
   - redact email addresses before provider submission
   - redact `Authorization`, `Proxy-Authorization`, `Cookie`, and `Set-Cookie` header values before provider submission
@@ -68,11 +106,13 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
 - The provider and model are selected by the user rather than inferred automatically.
 - The raw LLM API token is stored only in the local CLI state file during the current documented phase.
 - The result must be strict JSON that can feed downstream notification logic.
+- The CLI must support an isolated pre-runtime flow (`llm-prep`, `llm-request`, `llm-client`) so LLM preparation and analysis can be validated before cloud runtime integration.
 
 ## Open questions
 
 - See [OQ-105](../90-open-questions.md#oq-105) for whether the mandatory redaction baseline should expand beyond the documented MVP set.
 - See [OQ-107](../90-open-questions.md#oq-107) for the secret-management threshold before production use and for replacing the documented local token store.
+- See [OQ-108](../90-open-questions.md#oq-108) for batch strategy and context budgeting when repository snippets are added to LLM payloads.
 
 ## Deferred items
 

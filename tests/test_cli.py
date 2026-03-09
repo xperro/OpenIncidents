@@ -110,6 +110,83 @@ class CliTests(unittest.TestCase):
         self.assertEqual(prepared["meta"]["prepared_incidents"], 1)
         self.assertEqual(prepared["incidents"][0]["service"], "payments-orchestrator")
 
+    def test_llm_prep_loads_repo_urls_from_env_array(self):
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": "gateway timeout while charging card",
+            }
+        )
+        fake_repo_source = mock.Mock(
+            repo_name="sample-repo",
+            repo_url="https://github.com/example/sample-repo.git",
+            branch="main",
+            repo_dir="/tmp/sample-repo",
+        )
+        with mock.patch.dict(
+            os.environ,
+            {"TRIAGE_REPO_URLS": '["https://github.com/example/sample-repo.git"]'},
+            clear=False,
+        ):
+            with mock.patch("triage.cli.checkout_repo", return_value=fake_repo_source) as checkout:
+                code, stdout, stderr = self.run_cli(
+                    ["llm-prep", "--cloud", "gcp", "--runtime", "python"],
+                    input_text=payload,
+                )
+
+        self.assertEqual(code, 0, msg=stderr)
+        prepared = json.loads(stdout)
+        self.assertTrue(prepared["meta"]["repo_context_enabled"])
+        checkout.assert_called_once()
+        self.assertEqual(checkout.call_args.args[1], "https://github.com/example/sample-repo.git")
+
+    def test_llm_prep_loads_repo_urls_from_project_config_with_auth_env(self):
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": "db timeout on postgres",
+            }
+        )
+        project = default_project_config()
+        project["repos"] = [
+            {
+                "name": "payments",
+                "git_url": "https://github.com/example/payments.git",
+                "branch": "develop",
+                "auth": {"username_env": "GIT_USERNAME", "token_env": "GIT_TOKEN"},
+            }
+        ]
+        save_project_config(self.work_dir, project)
+        fake_repo_source = mock.Mock(
+            repo_name="payments",
+            repo_url="https://github.com/example/payments.git",
+            branch="develop",
+            repo_dir="/tmp/payments",
+        )
+        with mock.patch.dict(
+            os.environ,
+            {"GIT_USERNAME": "bot-user", "GIT_TOKEN": "tok-123"},
+            clear=False,
+        ):
+            with mock.patch("triage.cli.checkout_repo", return_value=fake_repo_source) as checkout:
+                code, stdout, stderr = self.run_cli(
+                    ["llm-prep", "--cloud", "gcp", "--runtime", "python"],
+                    input_text=payload,
+                )
+
+        self.assertEqual(code, 0, msg=stderr)
+        prepared = json.loads(stdout)
+        self.assertTrue(prepared["meta"]["repo_context_enabled"])
+        checkout.assert_called_once()
+        self.assertEqual(checkout.call_args.args[1], "https://github.com/example/payments.git")
+        self.assertEqual(checkout.call_args.kwargs["branch"], "develop")
+        self.assertEqual(
+            checkout.call_args.kwargs["clone_url"],
+            "https://bot-user:tok-123@github.com/example/payments.git",
+        )
+
     def test_llm_request_and_client_mock_run_without_init(self):
         prepared_path = os.path.join(self.work_dir, "prepared.json")
         request_path = os.path.join(self.work_dir, "request.json")

@@ -9,13 +9,15 @@ import os
 import sys
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from .constants import VALID_CLOUDS, VALID_LLM_PROVIDERS, VALID_ROUTINGS, VALID_RUNTIMES, VERSION
 from .errors import UserError
 from .infra import generate_infra, package_handler, terraform_apply, terraform_plan
 from .llm_prep import prepare_for_llm
+from .llm_prep.repo_context import checkout_repo, enrich_prepared_with_repo_context, local_repo
 from .llm_request import build_llm_request_payload, run_llm_client
-from .local_run import run_local
+from .local_run import load_env_file, run_local
 from .project import (
     config_where,
     effective_view,
@@ -485,6 +487,43 @@ def build_parser() -> argparse.ArgumentParser:
     llm_prep_parser.add_argument(
         "--output",
         help="Optional absolute path for JSON output. If omitted, prints to stdout.",
+    )
+    llm_prep_parser.add_argument(
+        "--repo-url",
+        action="append",
+        default=[],
+        help="Optional repository URL to clone and scan for code context. May be repeated.",
+    )
+    llm_prep_parser.add_argument(
+        "--repo-path",
+        action="append",
+        default=[],
+        help="Optional absolute local repository path to scan. May be repeated.",
+    )
+    llm_prep_parser.add_argument(
+        "--repo-branch",
+        default="main",
+        help="Branch to checkout when using --repo-url.",
+    )
+    llm_prep_parser.add_argument(
+        "--repo-env-var",
+        default="TRIAGE_REPO_URLS",
+        help=(
+            "Environment variable name for repository URLs array. "
+            "Accepted format: JSON array or comma/newline-separated URLs."
+        ),
+    )
+    llm_prep_parser.add_argument(
+        "--repo-max-files",
+        type=int,
+        default=3,
+        help="Maximum code-context files attached per incident.",
+    )
+    llm_prep_parser.add_argument(
+        "--repo-max-snippet-lines",
+        type=int,
+        default=80,
+        help="Maximum lines per attached code snippet.",
     )
     llm_prep_parser.set_defaults(command_path=("llm-prep",), handler=handle_llm_prep)
     help_registry[("llm-prep",)] = llm_prep_parser
@@ -963,6 +1002,12 @@ def handle_llm_prep(args, context: Context) -> int:
         raise UserError("`--max-context-chars` must be greater than zero.")
     if args.max_stack_lines <= 0:
         raise UserError("`--max-stack-lines` must be greater than zero.")
+    if args.repo_max_files <= 0:
+        raise UserError("`--repo-max-files` must be greater than zero.")
+    if args.repo_max_snippet_lines <= 0:
+        raise UserError("`--repo-max-snippet-lines` must be greater than zero.")
+    if not str(args.repo_env_var or "").strip():
+        raise UserError("`--repo-env-var` cannot be empty.")
 
     if args.input == "-":
         payload = context.stdin.read()
@@ -979,6 +1024,47 @@ def handle_llm_prep(args, context: Context) -> int:
         max_context_chars=args.max_context_chars,
         max_stack_lines=args.max_stack_lines,
     )
+    env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
+    repo_sources = []
+    for path in args.repo_path:
+        repo_sources.append(local_repo(path))
+
+    repo_urls = list(args.repo_url)
+    repo_urls.extend(parse_repo_urls_from_env(env.get(args.repo_env_var, "")))
+    repo_urls.extend(project_repo_urls(context.cwd))
+    repo_specs = dedupe_repo_specs(repo_urls, branch=args.repo_branch)
+
+    for spec in repo_specs:
+        clone_url = apply_repo_auth(spec["repo_url"], spec.get("auth"), env)
+        repo_sources.append(
+            checkout_repo(
+                context.cwd,
+                spec["repo_url"],
+                branch=spec["branch"],
+                clone_url=clone_url,
+            )
+        )
+    if repo_sources:
+        prepared = enrich_prepared_with_repo_context(
+            prepared,
+            repo_sources,
+            max_files_per_incident=args.repo_max_files,
+            max_snippet_lines=args.repo_max_snippet_lines,
+        )
+        prepared.setdefault("meta", {})
+        prepared["meta"]["repo_sources"] = [
+            {
+                "repo_name": source.repo_name,
+                "repo_url": source.repo_url,
+                "branch": source.branch,
+                "repo_dir": source.repo_dir,
+            }
+            for source in repo_sources
+        ]
+        prepared["meta"]["repo_context_enabled"] = True
+    else:
+        prepared.setdefault("meta", {})
+        prepared["meta"]["repo_context_enabled"] = False
     rendered = render_json(prepared)
 
     if args.output:
@@ -1064,3 +1150,106 @@ def json_load_or_user_error(raw_payload: str, label: str) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise UserError(f"Input for `{label}` must be a JSON object.")
     return payload
+
+
+def parse_repo_urls_from_env(raw_value: str) -> list[str]:
+    raw = str(raw_value or "").strip()
+    if not raw:
+        return []
+    if raw.startswith("["):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise UserError(f"Repository env array must be valid JSON: {exc}") from exc
+        if not isinstance(parsed, list):
+            raise UserError("Repository env value must be a JSON array of repo URLs.")
+        return [str(item).strip() for item in parsed if str(item).strip()]
+    chunks = [piece.strip() for piece in raw.replace("\n", ",").split(",")]
+    return [item for item in chunks if item]
+
+
+def project_repo_urls(cwd: str) -> list[dict[str, Any]]:
+    project = load_project_config(cwd, optional=True)
+    if not project:
+        return []
+    repos = project.get("repos")
+    if not isinstance(repos, list):
+        return []
+    selected: list[dict[str, Any]] = []
+    for repo in repos:
+        if not isinstance(repo, dict):
+            continue
+        git_url = str(repo.get("git_url") or "").strip()
+        if not git_url:
+            continue
+        selected.append(
+            {
+                "repo_url": git_url,
+                "branch": str(repo.get("branch") or "main").strip() or "main",
+                "auth": repo.get("auth") if isinstance(repo.get("auth"), dict) else {},
+            }
+        )
+    return selected
+
+
+def dedupe_repo_specs(
+    repo_inputs: list[str] | list[dict[str, Any]],
+    *,
+    branch: str,
+) -> list[dict[str, Any]]:
+    specs: list[dict[str, Any]] = []
+    for item in repo_inputs:
+        if isinstance(item, dict):
+            repo_url = str(item.get("repo_url") or "").strip()
+            repo_branch = str(item.get("branch") or branch).strip() or branch
+            auth = item.get("auth") if isinstance(item.get("auth"), dict) else {}
+        else:
+            repo_url = str(item or "").strip()
+            repo_branch = branch
+            auth = {}
+        if not repo_url:
+            continue
+        specs.append({"repo_url": repo_url, "branch": repo_branch, "auth": auth})
+    unique: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+    for spec in specs:
+        key = (spec["repo_url"], spec["branch"])
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(spec)
+    return unique
+
+
+def apply_repo_auth(repo_url: str, auth: dict[str, Any], env: dict[str, str]) -> str:
+    if not auth:
+        return repo_url
+    username_env = str(auth.get("username_env") or "").strip()
+    token_env = str(auth.get("token_env") or "").strip()
+    if not username_env and not token_env:
+        return repo_url
+    username = env.get(username_env, "").strip() if username_env else ""
+    token = env.get(token_env, "").strip() if token_env else ""
+    if not username or not token:
+        missing = []
+        if username_env and not username:
+            missing.append(username_env)
+        if token_env and not token:
+            missing.append(token_env)
+        raise UserError(
+            "Missing repository credentials from environment: " + ", ".join(missing)
+        )
+    return inject_basic_auth(repo_url, username, token)
+
+
+def inject_basic_auth(repo_url: str, username: str, token: str) -> str:
+    parsed = urlsplit(repo_url)
+    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+        return repo_url
+    safe_user = quote(username, safe="")
+    safe_token = quote(token, safe="")
+    host = parsed.hostname or ""
+    if parsed.port:
+        host = f"{host}:{parsed.port}"
+    netloc = f"{safe_user}:{safe_token}@{host}"
+    return urlunsplit((parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment))
