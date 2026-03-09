@@ -78,6 +78,10 @@ jobs:
           TAG: ${{ steps.meta.outputs.tag }}
           TAP_REPOSITORY: ${{ vars.HOMEBREW_TAP_REPOSITORY }}
         run: |
+          TAP_ALIAS="${TAP_REPOSITORY}"
+          if [[ "${TAP_ALIAS}" == */homebrew-* ]]; then
+            TAP_ALIAS="${TAP_ALIAS/\/homebrew-/\/}"
+          fi
           {
             echo "## Release assets"
             echo
@@ -93,13 +97,13 @@ jobs:
               echo "Install the latest Homebrew formula:"
               echo '```bash'
               echo "brew tap ${TAP_REPOSITORY}"
-              echo "brew install ${TAP_REPOSITORY}/triage"
+              echo "brew install ${TAP_ALIAS}/triage"
               echo '```'
               echo
               echo "Upgrade an existing Homebrew install:"
               echo '```bash'
               echo "brew update"
-              echo "brew upgrade ${TAP_REPOSITORY}/triage"
+              echo "brew upgrade ${TAP_ALIAS}/triage"
               echo '```'
             else
               echo "Homebrew publication is not configured because \`HOMEBREW_TAP_REPOSITORY\` is empty."
@@ -144,7 +148,7 @@ jobs:
         shell: bash
         working-directory: homebrew-tap
         run: |
-          if git diff --quiet -- Formula/triage.rb; then
+          if [ -z "$(git status --porcelain -- Formula/triage.rb)" ]; then
             echo "Homebrew formula already up to date."
             exit 0
           fi
