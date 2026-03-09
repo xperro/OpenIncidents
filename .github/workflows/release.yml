@@ -88,11 +88,12 @@ jobs:
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.build-release.outputs.tag }}
           VERSION: ${{ needs.build-release.outputs.version }}
         run: |
           mkdir -p release-assets extracted
-          gh release download "${TAG}" --pattern "triage_${VERSION}_bundle.tar.gz" --dir release-assets
+          gh release download "${TAG}" --repo "${GH_REPO}" --pattern "triage_${VERSION}_bundle.tar.gz" --dir release-assets
           tar -xzf "release-assets/triage_${VERSION}_bundle.tar.gz" -C extracted
           chmod +x extracted/triage
           extracted/triage --help
@@ -102,13 +103,14 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           TAG: ${{ needs.build-release.outputs.tag }}
           VERSION: ${{ needs.build-release.outputs.version }}
         run: |
           $bundleName = "triage_$($env:VERSION)_bundle.zip"
           New-Item -ItemType Directory -Path release-assets -Force | Out-Null
           New-Item -ItemType Directory -Path extracted -Force | Out-Null
-          gh release download $env:TAG --pattern $bundleName --dir release-assets
+          gh release download $env:TAG --repo $env:GH_REPO --pattern $bundleName --dir release-assets
           Expand-Archive -Path "release-assets/$bundleName" -DestinationPath extracted
           cmd /c extracted\triage.cmd --help
           py extracted\triage.pyz --help
