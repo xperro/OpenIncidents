@@ -49,6 +49,7 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage llm-prep`
   - `triage llm-request`
   - `triage llm-client`
+  - `triage llm-resolve`
   - `triage settings show`
   - `triage settings set <key> <value>`
   - `triage settings validate --cloud gcp|aws|all`
@@ -61,8 +62,8 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage infra apply`
   - `triage run`
 - Bootstrap gating:
-  - if no local CLI state exists, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `config show`, `config where`, and `config wizard` are allowed
-  - if local CLI state exists but `bootstrap_complete` is `false`, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `settings show`, `settings set`, `settings validate`, `config show`, `config where`, and `config wizard` are allowed
+  - if no local CLI state exists, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `llm-resolve`, `config show`, `config where`, and `config wizard` are allowed
+  - if local CLI state exists but `bootstrap_complete` is `false`, only `help`, `version`, `init`, `llm-prep`, `llm-request`, `llm-client`, `llm-resolve`, `settings show`, `settings set`, `settings validate`, `config show`, `config where`, and `config wizard` are allowed
   - `template download`, `infra generate`, `infra plan`, `infra apply`, and `run` are blocked until bootstrap is complete
 - Help and error behavior:
   - `triage help` and `triage h` print the same top-level help as `triage -h`
@@ -183,8 +184,14 @@ Define the user-facing behavior of the `triage` CLI that prepares, validates, de
   - `triage llm-prep` repository enrichment sources are additive: `--repo-url`, `TRIAGE_REPO_URLS`, and `triage.yaml repos[].git_url`
   - `TRIAGE_REPO_URLS` accepts either a JSON array or comma/newline-separated repository URLs
   - when `triage.yaml repos[].auth` is declared, `triage llm-prep` resolves `username_env` and `token_env` before cloning
+  - `triage llm-prep --cost-profile` supports `custom`, `lean`, `balanced`, and `deep` context presets
+  - when `--cost-profile` is omitted, `triage llm-prep` resolves the default profile from `TRIAGE_LLM_COST_PROFILE` (or from the variable indicated by `--cost-profile-env-var`)
+  - repository scan must avoid common non-business files (for example wrappers and lockfiles) to reduce token waste
   - `triage llm-request` transforms `llm-prep.v1` payloads into `llm-request.v1` payloads for a selected provider/model
+  - `triage llm-request` model can be omitted and resolved from provider env (`TRIAGE_OPENAI_MODEL` or `TRIAGE_ANTHROPIC_MODEL`), then global env (`TRIAGE_LLM_MODEL`), then provider default (`openai: gpt-4o-mini`)
   - `triage llm-client` executes `llm-request.v1` payloads and emits `llm-analysis.v1` output
+  - `triage llm-resolve` runs the full `llm-prep -> llm-request -> llm-client` chain in one command and writes `prepared.json`, `llm-request.json`, and `llm-analysis.json` under the selected artifact directory
+  - when `triage llm-resolve` omits `--provider`, provider selection is automatic: `openai` if `OPENAI_API_KEY` exists, else `anthropic` if `ANTHROPIC_API_KEY` exists, else `mock`; when both exist, `openai` is preferred
   - `triage llm-client` supports `mock`, `openai`, and `anthropic` provider modes
   - `mock` is local-development-only and does not call an external API
   - `openai` and `anthropic` require API keys in environment variables

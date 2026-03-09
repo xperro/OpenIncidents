@@ -19,6 +19,7 @@ def run_llm_client(
     provider: str | None = None,
     model: str | None = None,
     api_key_env: str | None = None,
+    env: dict[str, str] | None = None,
     timeout_seconds: int = 30,
 ) -> dict[str, Any]:
     incidents = request_payload.get("incidents")
@@ -33,7 +34,8 @@ def run_llm_client(
         chosen_model = default_model(chosen_provider)
 
     key_env = api_key_env or default_api_key_env(chosen_provider)
-    api_key = os.environ.get(key_env, "") if key_env else ""
+    env_source = env if env is not None else os.environ
+    api_key = env_source.get(key_env, "") if key_env else ""
     if chosen_provider != "mock" and not api_key:
         raise UserError(
             f"Missing API key for provider `{chosen_provider}`. Set environment variable `{key_env}`."
@@ -87,7 +89,7 @@ def default_api_key_env(provider: str) -> str:
 
 def default_model(provider: str) -> str:
     if provider == "openai":
-        return "gpt-4.1"
+        return "gpt-4o-mini"
     if provider == "anthropic":
         return "claude-3-7-sonnet"
     return "mock-1"

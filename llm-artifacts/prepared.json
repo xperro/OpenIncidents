@@ -1,0 +1,346 @@
+{
+  "incidents": [
+    {
+      "analysis_mode": "with_repo",
+      "cloud": "gcp",
+      "count": 1,
+      "env": "unknown",
+      "error_message": "cpu usage at 97% for 5m, request latency p99=4.8s",
+      "fingerprint": "ad7be215bec3c73a",
+      "incident_id": "ad7be215bec3c73a",
+      "llm_input": {
+        "constraints": {
+          "max_context_chars": 186,
+          "max_tokens": 1200,
+          "redaction_applied": true
+        },
+        "evidence": [
+          "{\"timestamp\": \"2026-03-09T15:01:41Z\", \"severity\": \"CRITICAL\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"textPayload\": \"cpu usage at 97% for 5m, request latency p99=4.8s\"}"
+        ],
+        "incident_summary": "cpu usage at 97% for 5m, request latency p99=4.8s",
+        "repo_context": [
+          {
+            "branch": "main",
+            "file_path": "grafana_json_model.json",
+            "line_end": 531,
+            "line_start": 502,
+            "match_term": "usage",
+            "repo_name": "rent-a-car-microservices",
+            "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git",
+            "score": 1,
+            "snippet": "   502 |       \"options\": {\n   503 |         \"alertThreshold\": true\n   504 |       },\n   505 |       \"percentage\": false,\n   506 |       \"pluginVersion\": \"9.5.2\",\n   507 |       \"pointradius\": 5,\n   508 |       \"points\": false,\n   509 |       \"renderer\": \"flot\",\n   510 |       \"seriesOverrides\": [],\n   511 |       \"spaceLength\": 10,\n   512 |       \"stack\": false,\n   513 |       \"steppedLine\": false,\n   514 |       \"targets\": [\n   515 |         {\n   516 |           \"datasource\": \"c3382cce-e056-40a4-a7a1-e7658ce01570\",\n   517 |           \"expr\": \"system_cpu_usage{instance=\\\"$instance\\\", application=\\\"$application\\\"}\",\n   518 |           \"format\": \"time_series\",\n   519 |           \"intervalFactor\": 1,\n   520 |           \"legendFormat\": \"System CPU Usage\",\n   521 |           \"refId\": \"A\"\n   522 |         },\n   523 |         {\n   524 |           \"datasource\": \"c3382cce-e056-40a4-a7a1-e7658ce01570\",\n   525 |           \"expr\": \"process_cpu_usage{instance=\\\"$instance\\\", application=\\\"$application\\\"}\",\n   526 |           \"format\": \"time_series\",\n   527 |           \"intervalFactor\": 1,\n   528 |           \"legendFormat\": \"Process CPU Usage\",\n   529 |           \"refId\": \"B\"\n   530 |         }\n   531 |       ],"
+          }
+        ],
+        "response_contract": {
+          "format": "json",
+          "required_fields": [
+            "summary",
+            "suspected_cause",
+            "suggested_fix",
+            "confidence",
+            "safe_to_escalate",
+            "files_or_area_to_check",
+            "tests_to_run"
+          ]
+        }
+      },
+      "repo_context": [
+        {
+          "branch": "main",
+          "file_path": "grafana_json_model.json",
+          "line_end": 531,
+          "line_start": 502,
+          "match_term": "usage",
+          "repo_name": "rent-a-car-microservices",
+          "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git",
+          "score": 1,
+          "snippet": "   502 |       \"options\": {\n   503 |         \"alertThreshold\": true\n   504 |       },\n   505 |       \"percentage\": false,\n   506 |       \"pluginVersion\": \"9.5.2\",\n   507 |       \"pointradius\": 5,\n   508 |       \"points\": false,\n   509 |       \"renderer\": \"flot\",\n   510 |       \"seriesOverrides\": [],\n   511 |       \"spaceLength\": 10,\n   512 |       \"stack\": false,\n   513 |       \"steppedLine\": false,\n   514 |       \"targets\": [\n   515 |         {\n   516 |           \"datasource\": \"c3382cce-e056-40a4-a7a1-e7658ce01570\",\n   517 |           \"expr\": \"system_cpu_usage{instance=\\\"$instance\\\", application=\\\"$application\\\"}\",\n   518 |           \"format\": \"time_series\",\n   519 |           \"intervalFactor\": 1,\n   520 |           \"legendFormat\": \"System CPU Usage\",\n   521 |           \"refId\": \"A\"\n   522 |         },\n   523 |         {\n   524 |           \"datasource\": \"c3382cce-e056-40a4-a7a1-e7658ce01570\",\n   525 |           \"expr\": \"process_cpu_usage{instance=\\\"$instance\\\", application=\\\"$application\\\"}\",\n   526 |           \"format\": \"time_series\",\n   527 |           \"intervalFactor\": 1,\n   528 |           \"legendFormat\": \"Process CPU Usage\",\n   529 |           \"refId\": \"B\"\n   530 |         }\n   531 |       ],"
+        }
+      ],
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "CRITICAL",
+      "source": "cloud_logging",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "summary": "cpu usage at 97% for 5m, request latency p99=4.8s",
+      "window": {
+        "first_seen": "2026-03-09T15:01:41Z",
+        "last_seen": "2026-03-09T15:01:41Z"
+      }
+    },
+    {
+      "analysis_mode": "pre_repo",
+      "cloud": "gcp",
+      "count": 1,
+      "env": "unknown",
+      "error_message": "panic at internal/approvals/repository.go:187 in LoadApprovalByID",
+      "fingerprint": "8f61a88da66f14a2",
+      "incident_id": "8f61a88da66f14a2",
+      "llm_input": {
+        "constraints": {
+          "max_context_chars": 350,
+          "max_tokens": 1200,
+          "redaction_applied": true
+        },
+        "evidence": [
+          "{\"timestamp\": \"2026-03-09T15:01:02Z\", \"severity\": \"ERROR\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"jsonPayload\": {\"message\": \"panic: nil pointer dereference\", \"file\": \"internal/approvals/repository.go\", \"line\": 187, \"function\": \"LoadApprovalByID\"}, \"textPayload\": \"panic at internal/approvals/repository.go:187 in LoadApprovalByID\"}"
+        ],
+        "incident_summary": "panic at internal/approvals/repository.go:187 in LoadApprovalByID",
+        "response_contract": {
+          "format": "json",
+          "required_fields": [
+            "summary",
+            "suspected_cause",
+            "suggested_fix",
+            "confidence",
+            "safe_to_escalate",
+            "files_or_area_to_check",
+            "tests_to_run"
+          ]
+        }
+      },
+      "repo_context": [],
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "ERROR",
+      "source": "cloud_logging",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "summary": "panic at internal/approvals/repository.go:187 in LoadApprovalByID",
+      "window": {
+        "first_seen": "2026-03-09T15:01:02Z",
+        "last_seen": "2026-03-09T15:01:02Z"
+      }
+    },
+    {
+      "analysis_mode": "with_repo",
+      "cloud": "gcp",
+      "count": 1,
+      "env": "unknown",
+      "error_message": "db deadlock detected in transaction update_approval_state",
+      "fingerprint": "a6309cdf89bc01af",
+      "incident_id": "a6309cdf89bc01af",
+      "llm_input": {
+        "constraints": {
+          "max_context_chars": 191,
+          "max_tokens": 1200,
+          "redaction_applied": true
+        },
+        "evidence": [
+          "{\"timestamp\": \"2026-03-09T15:00:23Z\", \"severity\": \"ERROR\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"textPayload\": \"db deadlock detected in transaction update_approval_state\"}"
+        ],
+        "incident_summary": "db deadlock detected in transaction update_approval_state",
+        "repo_context": [
+          {
+            "branch": "main",
+            "file_path": "inventory-service/src/main/java/com/kodlamaio/inventoryservice/repository/CarRepository.java",
+            "line_end": 18,
+            "line_start": 1,
+            "match_term": "transaction",
+            "repo_name": "rent-a-car-microservices",
+            "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git",
+            "score": 7,
+            "snippet": "     1 | package com.kodlamaio.inventoryservice.repository;\n     2 | \n     3 | import com.kodlamaio.inventoryservice.entities.Car;\n     4 | import com.kodlamaio.inventoryservice.entities.enums.State;\n     5 | import jakarta.transaction.Transactional;\n     6 | import org.springframework.data.jpa.repository.JpaRepository;\n     7 | import org.springframework.data.jpa.repository.Modifying;\n     8 | import org.springframework.data.jpa.repository.Query;\n     9 | \n    10 | import java.util.UUID;\n    11 | \n    12 | public interface CarRepository extends JpaRepository<Car, UUID>\n    13 | {\n    14 |     @Modifying\n    15 |     @Transactional\n    16 |     @Query(value = \"update Car set state =:state where id =:id\")\n    17 |     void changeStateByCarId(State state, UUID id);\n    18 | }"
+          }
+        ],
+        "response_contract": {
+          "format": "json",
+          "required_fields": [
+            "summary",
+            "suspected_cause",
+            "suggested_fix",
+            "confidence",
+            "safe_to_escalate",
+            "files_or_area_to_check",
+            "tests_to_run"
+          ]
+        }
+      },
+      "repo_context": [
+        {
+          "branch": "main",
+          "file_path": "inventory-service/src/main/java/com/kodlamaio/inventoryservice/repository/CarRepository.java",
+          "line_end": 18,
+          "line_start": 1,
+          "match_term": "transaction",
+          "repo_name": "rent-a-car-microservices",
+          "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git",
+          "score": 7,
+          "snippet": "     1 | package com.kodlamaio.inventoryservice.repository;\n     2 | \n     3 | import com.kodlamaio.inventoryservice.entities.Car;\n     4 | import com.kodlamaio.inventoryservice.entities.enums.State;\n     5 | import jakarta.transaction.Transactional;\n     6 | import org.springframework.data.jpa.repository.JpaRepository;\n     7 | import org.springframework.data.jpa.repository.Modifying;\n     8 | import org.springframework.data.jpa.repository.Query;\n     9 | \n    10 | import java.util.UUID;\n    11 | \n    12 | public interface CarRepository extends JpaRepository<Car, UUID>\n    13 | {\n    14 |     @Modifying\n    15 |     @Transactional\n    16 |     @Query(value = \"update Car set state =:state where id =:id\")\n    17 |     void changeStateByCarId(State state, UUID id);\n    18 | }"
+        }
+      ],
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "ERROR",
+      "source": "cloud_logging",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "summary": "db deadlock detected in transaction update_approval_state",
+      "window": {
+        "first_seen": "2026-03-09T15:00:23Z",
+        "last_seen": "2026-03-09T15:00:23Z"
+      }
+    },
+    {
+      "analysis_mode": "with_repo",
+      "cloud": "gcp",
+      "count": 1,
+      "env": "unknown",
+      "error_message": "db connection refused to postgres:5432",
+      "fingerprint": "3799e24d31bb0ac3",
+      "incident_id": "3799e24d31bb0ac3",
+      "llm_input": {
+        "constraints": {
+          "max_context_chars": 172,
+          "max_tokens": 1200,
+          "redaction_applied": true
+        },
+        "evidence": [
+          "{\"timestamp\": \"2026-03-09T15:00:11Z\", \"severity\": \"ERROR\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"textPayload\": \"db connection refused to postgres:5432\"}"
+        ],
+        "incident_summary": "db connection refused to postgres:5432",
+        "repo_context": [
+          {
+            "branch": "main",
+            "file_path": "grafana_json_model.json",
+            "line_end": 1671,
+            "line_start": 1642,
+            "match_term": "connection",
+            "repo_name": "rent-a-car-microservices",
+            "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git",
+            "score": 1,
+            "snippet": "  1642 |         \"justifyMode\": \"auto\",\n  1643 |         \"orientation\": \"horizontal\",\n  1644 |         \"reduceOptions\": {\n  1645 |           \"calcs\": [\n  1646 |             \"lastNotNull\"\n  1647 |           ],\n  1648 |           \"fields\": \"\",\n  1649 |           \"values\": false\n  1650 |         },\n  1651 |         \"textMode\": \"auto\"\n  1652 |       },\n  1653 |       \"pluginVersion\": \"8.5.2\",\n  1654 |       \"targets\": [\n  1655 |         {\n  1656 |           \"datasource\": \"c3382cce-e056-40a4-a7a1-e7658ce01570\",\n  1657 |           \"expr\": \"hikaricp_connections{instance=\\\"$instance\\\", application=\\\"$application\\\", pool=\\\"$hikaricp\\\"}\",\n  1658 |           \"format\": \"time_series\",\n  1659 |           \"intervalFactor\": 1,\n  1660 |           \"legendFormat\": \"\",\n  1661 |           \"refId\": \"A\"\n  1662 |         }\n  1663 |       ],\n  1664 |       \"title\": \"Connections Size\",\n  1665 |       \"type\": \"stat\"\n  1666 |     },\n  1667 |     {\n  1668 |       \"aliasColors\": {},\n  1669 |       \"bars\": false,\n  1670 |       \"dashLength\": 10,\n  1671 |       \"dashes\": false,"
+          }
+        ],
+        "response_contract": {
+          "format": "json",
+          "required_fields": [
+            "summary",
+            "suspected_cause",
+            "suggested_fix",
+            "confidence",
+            "safe_to_escalate",
+            "files_or_area_to_check",
+            "tests_to_run"
+          ]
+        }
+      },
+      "repo_context": [
+        {
+          "branch": "main",
+          "file_path": "grafana_json_model.json",
+          "line_end": 1671,
+          "line_start": 1642,
+          "match_term": "connection",
+          "repo_name": "rent-a-car-microservices",
+          "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git",
+          "score": 1,
+          "snippet": "  1642 |         \"justifyMode\": \"auto\",\n  1643 |         \"orientation\": \"horizontal\",\n  1644 |         \"reduceOptions\": {\n  1645 |           \"calcs\": [\n  1646 |             \"lastNotNull\"\n  1647 |           ],\n  1648 |           \"fields\": \"\",\n  1649 |           \"values\": false\n  1650 |         },\n  1651 |         \"textMode\": \"auto\"\n  1652 |       },\n  1653 |       \"pluginVersion\": \"8.5.2\",\n  1654 |       \"targets\": [\n  1655 |         {\n  1656 |           \"datasource\": \"c3382cce-e056-40a4-a7a1-e7658ce01570\",\n  1657 |           \"expr\": \"hikaricp_connections{instance=\\\"$instance\\\", application=\\\"$application\\\", pool=\\\"$hikaricp\\\"}\",\n  1658 |           \"format\": \"time_series\",\n  1659 |           \"intervalFactor\": 1,\n  1660 |           \"legendFormat\": \"\",\n  1661 |           \"refId\": \"A\"\n  1662 |         }\n  1663 |       ],\n  1664 |       \"title\": \"Connections Size\",\n  1665 |       \"type\": \"stat\"\n  1666 |     },\n  1667 |     {\n  1668 |       \"aliasColors\": {},\n  1669 |       \"bars\": false,\n  1670 |       \"dashLength\": 10,\n  1671 |       \"dashes\": false,"
+        }
+      ],
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "ERROR",
+      "source": "cloud_logging",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "summary": "db connection refused to postgres:5432",
+      "window": {
+        "first_seen": "2026-03-09T15:00:11Z",
+        "last_seen": "2026-03-09T15:00:11Z"
+      }
+    },
+    {
+      "analysis_mode": "with_repo",
+      "cloud": "gcp",
+      "count": 1,
+      "env": "unknown",
+      "error_message": "db timeout on postgres while fetching merge requests",
+      "fingerprint": "9c65f1b97f392153",
+      "incident_id": "9c65f1b97f392153",
+      "llm_input": {
+        "constraints": {
+          "max_context_chars": 186,
+          "max_tokens": 1200,
+          "redaction_applied": true
+        },
+        "evidence": [
+          "{\"timestamp\": \"2026-03-09T15:00:01Z\", \"severity\": \"ERROR\", \"resource\": {\"labels\": {\"service_name\": \"approve-mrs\"}}, \"textPayload\": \"db timeout on postgres while fetching merge requests\"}"
+        ],
+        "incident_summary": "db timeout on postgres while fetching merge requests",
+        "repo_context": [
+          {
+            "branch": "main",
+            "file_path": "inventory-service/src/main/java/com/kodlamaio/inventoryservice/api/controllers/CarsController.java",
+            "line_end": 30,
+            "line_start": 1,
+            "match_term": "requests",
+            "repo_name": "rent-a-car-microservices",
+            "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git",
+            "score": 10,
+            "snippet": "     1 | package com.kodlamaio.inventoryservice.api.controllers;\n     2 | \n     3 | import com.kodlamaio.commonpackage.utils.constants.Roles;\n     4 | import com.kodlamaio.commonpackage.utils.dto.responses.CarClientResponse;\n     5 | import com.kodlamaio.commonpackage.utils.dto.responses.ClientResponse;\n     6 | import com.kodlamaio.inventoryservice.business.abstracts.CarService;\n     7 | import com.kodlamaio.inventoryservice.business.dto.requests.create.CreateCarRequest;\n     8 | import com.kodlamaio.inventoryservice.business.dto.requests.update.UpdateCarRequest;\n     9 | import com.kodlamaio.inventoryservice.business.dto.responses.create.CreateCarResponse;\n    10 | import com.kodlamaio.inventoryservice.business.dto.responses.get.GetAllCarsResponse;\n    11 | import com.kodlamaio.inventoryservice.business.dto.responses.get.GetCarResponse;\n    12 | import com.kodlamaio.inventoryservice.business.dto.responses.update.UpdateCarResponse;\n    13 | import io.swagger.v3.oas.annotations.tags.Tag;\n    14 | import jakarta.validation.Valid;\n    15 | import jakarta.validation.constraints.NotNull;\n    16 | import lombok.AllArgsConstructor;\n    17 | import org.springframework.http.HttpStatus;\n    18 | import org.springframework.security.access.annotation.Secured;\n    19 | import org.springframework.security.access.prepost.PostAuthorize;\n    20 | import org.springframework.security.access.prepost.PreAuthorize;\n    21 | import org.springframework.validation.annotation.Validated;\n    22 | import org.springframework.web.bind.annotation.*;\n    23 | \n    24 | import java.util.List;\n    25 | import java.util.UUID;\n    26 | \n    27 | @RestController\n    28 | @AllArgsConstructor\n    29 | @RequestMapping(\"/api/cars\")\n    30 | @Validated"
+          }
+        ],
+        "response_contract": {
+          "format": "json",
+          "required_fields": [
+            "summary",
+            "suspected_cause",
+            "suggested_fix",
+            "confidence",
+            "safe_to_escalate",
+            "files_or_area_to_check",
+            "tests_to_run"
+          ]
+        }
+      },
+      "repo_context": [
+        {
+          "branch": "main",
+          "file_path": "inventory-service/src/main/java/com/kodlamaio/inventoryservice/api/controllers/CarsController.java",
+          "line_end": 30,
+          "line_start": 1,
+          "match_term": "requests",
+          "repo_name": "rent-a-car-microservices",
+          "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git",
+          "score": 10,
+          "snippet": "     1 | package com.kodlamaio.inventoryservice.api.controllers;\n     2 | \n     3 | import com.kodlamaio.commonpackage.utils.constants.Roles;\n     4 | import com.kodlamaio.commonpackage.utils.dto.responses.CarClientResponse;\n     5 | import com.kodlamaio.commonpackage.utils.dto.responses.ClientResponse;\n     6 | import com.kodlamaio.inventoryservice.business.abstracts.CarService;\n     7 | import com.kodlamaio.inventoryservice.business.dto.requests.create.CreateCarRequest;\n     8 | import com.kodlamaio.inventoryservice.business.dto.requests.update.UpdateCarRequest;\n     9 | import com.kodlamaio.inventoryservice.business.dto.responses.create.CreateCarResponse;\n    10 | import com.kodlamaio.inventoryservice.business.dto.responses.get.GetAllCarsResponse;\n    11 | import com.kodlamaio.inventoryservice.business.dto.responses.get.GetCarResponse;\n    12 | import com.kodlamaio.inventoryservice.business.dto.responses.update.UpdateCarResponse;\n    13 | import io.swagger.v3.oas.annotations.tags.Tag;\n    14 | import jakarta.validation.Valid;\n    15 | import jakarta.validation.constraints.NotNull;\n    16 | import lombok.AllArgsConstructor;\n    17 | import org.springframework.http.HttpStatus;\n    18 | import org.springframework.security.access.annotation.Secured;\n    19 | import org.springframework.security.access.prepost.PostAuthorize;\n    20 | import org.springframework.security.access.prepost.PreAuthorize;\n    21 | import org.springframework.validation.annotation.Validated;\n    22 | import org.springframework.web.bind.annotation.*;\n    23 | \n    24 | import java.util.List;\n    25 | import java.util.UUID;\n    26 | \n    27 | @RestController\n    28 | @AllArgsConstructor\n    29 | @RequestMapping(\"/api/cars\")\n    30 | @Validated"
+        }
+      ],
+      "runtime_hint": "go",
+      "service": "approve-mrs",
+      "severity": "ERROR",
+      "source": "cloud_logging",
+      "source_link": "",
+      "stacktrace_excerpt": "",
+      "summary": "db timeout on postgres while fetching merge requests",
+      "window": {
+        "first_seen": "2026-03-09T15:00:01Z",
+        "last_seen": "2026-03-09T15:00:01Z"
+      }
+    }
+  ],
+  "meta": {
+    "cloud_hint": "gcp",
+    "cost_profile": "lean",
+    "dropped_events": 4,
+    "input_events": 9,
+    "kept_events": 5,
+    "prepared_incidents": 5,
+    "repo_context_enabled": true,
+    "repo_sources": [
+      {
+        "branch": "main",
+        "repo_dir": "/home/jorge/Escritorio/AgentIncident/OpenIncidents/.triage/cache/repos/rent-a-car-microservices-bb5e6a7042",
+        "repo_name": "rent-a-car-microservices",
+        "repo_url": "https://github.com/chrisloarryn/rent-a-car-microservices.git"
+      }
+    ],
+    "runtime_hint": "go",
+    "severity_min": "ERROR"
+  },
+  "prepared_at": "2026-03-09T16:51:29.631618+00:00",
+  "request_id": "prep-8cc5dd7b0488",
+  "schema_version": "llm-prep.v1"
+}

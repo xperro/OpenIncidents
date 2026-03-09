@@ -17,6 +17,7 @@ from .infra import generate_infra, package_handler, terraform_apply, terraform_p
 from .llm_prep import prepare_for_llm
 from .llm_prep.repo_context import checkout_repo, enrich_prepared_with_repo_context, local_repo
 from .llm_request import build_llm_request_payload, run_llm_client
+from .llm_request.client import default_model
 from .local_run import load_env_file, run_local
 from .project import (
     config_where,
@@ -48,6 +49,7 @@ ALLOWED_WITHOUT_STATE = {
     ("llm-prep",),
     ("llm-request",),
     ("llm-client",),
+    ("llm-resolve",),
     ("config", "show"),
     ("config", "where"),
     ("config", "wizard"),
@@ -525,6 +527,17 @@ def build_parser() -> argparse.ArgumentParser:
         default=80,
         help="Maximum lines per attached code snippet.",
     )
+    llm_prep_parser.add_argument(
+        "--cost-profile",
+        choices=("custom", "lean", "balanced", "deep"),
+        default=None,
+        help="Optional preset that overrides llm-prep context limits for cost control.",
+    )
+    llm_prep_parser.add_argument(
+        "--cost-profile-env-var",
+        default="TRIAGE_LLM_COST_PROFILE",
+        help="Environment variable name for default llm-prep cost profile.",
+    )
     llm_prep_parser.set_defaults(command_path=("llm-prep",), handler=handle_llm_prep)
     help_registry[("llm-prep",)] = llm_prep_parser
 
@@ -544,7 +557,12 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Target provider for downstream analysis.",
     )
-    llm_request_parser.add_argument("--model", required=True, help="Provider model name.")
+    llm_request_parser.add_argument("--model", help="Provider model name.")
+    llm_request_parser.add_argument(
+        "--model-env-var",
+        default="TRIAGE_LLM_MODEL",
+        help="Environment variable name for default `llm-request` model.",
+    )
     llm_request_parser.add_argument("--max-tokens", type=int, default=1200, help="Per-incident token budget.")
     llm_request_parser.add_argument("--output", help="Optional absolute output path for the request payload JSON.")
     llm_request_parser.set_defaults(command_path=("llm-request",), handler=handle_llm_request)
@@ -574,6 +592,52 @@ def build_parser() -> argparse.ArgumentParser:
     llm_client_parser.add_argument("--output", help="Optional absolute output path for analysis JSON.")
     llm_client_parser.set_defaults(command_path=("llm-client",), handler=handle_llm_client)
     help_registry[("llm-client",)] = llm_client_parser
+
+    llm_resolve_parser = subparsers.add_parser(
+        "llm-resolve",
+        help="Run llm-prep + llm-request + llm-client in one command.",
+        description="Execute the full local LLM flow from raw events to final analysis output.",
+        epilog=format_examples(
+            "cat events.json | triage llm-resolve --cloud gcp --runtime go --provider openai",
+            "triage llm-resolve --input /abs/events.json --cloud gcp --runtime go --provider openai --artifact-dir /abs/out",
+        ),
+    )
+    llm_resolve_parser.add_argument("--input", default="-", help="Absolute path to a JSON payload, or `-` for stdin.")
+    llm_resolve_parser.add_argument("--output", help="Optional absolute output path for final llm-analysis JSON.")
+    llm_resolve_parser.add_argument(
+        "--artifact-dir",
+        help="Optional absolute directory to persist intermediate files (`prepared.json`, `llm-request.json`, `llm-analysis.json`).",
+    )
+    llm_resolve_parser.add_argument("--cloud", choices=("auto",) + VALID_CLOUDS, default="auto")
+    llm_resolve_parser.add_argument("--runtime", choices=("auto",) + VALID_RUNTIMES, default="auto")
+    llm_resolve_parser.add_argument("--severity-min", default="ERROR")
+    llm_resolve_parser.add_argument("--max-incidents", type=int, default=20)
+    llm_resolve_parser.add_argument("--max-context-chars", type=int, default=4000)
+    llm_resolve_parser.add_argument("--max-stack-lines", type=int, default=20)
+    llm_resolve_parser.add_argument("--repo-url", action="append", default=[])
+    llm_resolve_parser.add_argument("--repo-path", action="append", default=[])
+    llm_resolve_parser.add_argument("--repo-branch", default="main")
+    llm_resolve_parser.add_argument("--repo-env-var", default="TRIAGE_REPO_URLS")
+    llm_resolve_parser.add_argument("--repo-max-files", type=int, default=3)
+    llm_resolve_parser.add_argument("--repo-max-snippet-lines", type=int, default=80)
+    llm_resolve_parser.add_argument(
+        "--cost-profile",
+        choices=("custom", "lean", "balanced", "deep"),
+        default=None,
+    )
+    llm_resolve_parser.add_argument("--cost-profile-env-var", default="TRIAGE_LLM_COST_PROFILE")
+    llm_resolve_parser.add_argument(
+        "--provider",
+        choices=("openai", "anthropic", "mock"),
+        help="Optional provider override. When omitted, resolves automatically (openai > anthropic > mock).",
+    )
+    llm_resolve_parser.add_argument("--model")
+    llm_resolve_parser.add_argument("--model-env-var", default="TRIAGE_LLM_MODEL")
+    llm_resolve_parser.add_argument("--max-tokens", type=int, default=1200)
+    llm_resolve_parser.add_argument("--api-key-env")
+    llm_resolve_parser.add_argument("--timeout-seconds", type=int, default=30)
+    llm_resolve_parser.set_defaults(command_path=("llm-resolve",), handler=handle_llm_resolve)
+    help_registry[("llm-resolve",)] = llm_resolve_parser
 
     return parser
 
@@ -992,6 +1056,9 @@ def handle_run(args, context: Context) -> int:
 
 
 def handle_llm_prep(args, context: Context) -> int:
+    env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
+    args.cost_profile = resolve_cost_profile(args, env)
+    apply_cost_profile(args)
     if args.input != "-" and not os.path.isabs(args.input):
         raise UserError("`--input` must be absolute when a file path is provided.")
     if args.output and not os.path.isabs(args.output):
@@ -1008,6 +1075,8 @@ def handle_llm_prep(args, context: Context) -> int:
         raise UserError("`--repo-max-snippet-lines` must be greater than zero.")
     if not str(args.repo_env_var or "").strip():
         raise UserError("`--repo-env-var` cannot be empty.")
+    if not str(args.cost_profile_env_var or "").strip():
+        raise UserError("`--cost-profile-env-var` cannot be empty.")
 
     if args.input == "-":
         payload = context.stdin.read()
@@ -1024,26 +1093,7 @@ def handle_llm_prep(args, context: Context) -> int:
         max_context_chars=args.max_context_chars,
         max_stack_lines=args.max_stack_lines,
     )
-    env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
-    repo_sources = []
-    for path in args.repo_path:
-        repo_sources.append(local_repo(path))
-
-    repo_urls = list(args.repo_url)
-    repo_urls.extend(parse_repo_urls_from_env(env.get(args.repo_env_var, "")))
-    repo_urls.extend(project_repo_urls(context.cwd))
-    repo_specs = dedupe_repo_specs(repo_urls, branch=args.repo_branch)
-
-    for spec in repo_specs:
-        clone_url = apply_repo_auth(spec["repo_url"], spec.get("auth"), env)
-        repo_sources.append(
-            checkout_repo(
-                context.cwd,
-                spec["repo_url"],
-                branch=spec["branch"],
-                clone_url=clone_url,
-            )
-        )
+    repo_sources = build_repo_sources_for_llm(args, context, env)
     if repo_sources:
         prepared = enrich_prepared_with_repo_context(
             prepared,
@@ -1065,6 +1115,7 @@ def handle_llm_prep(args, context: Context) -> int:
     else:
         prepared.setdefault("meta", {})
         prepared["meta"]["repo_context_enabled"] = False
+    prepared["meta"]["cost_profile"] = args.cost_profile
     rendered = render_json(prepared)
 
     if args.output:
@@ -1088,13 +1139,23 @@ def handle_llm_request(args, context: Context) -> int:
         raise UserError("`--output` must be an absolute path.")
     if args.max_tokens <= 0:
         raise UserError("`--max-tokens` must be greater than zero.")
+    if not str(args.model_env_var or "").strip():
+        raise UserError("`--model-env-var` cannot be empty.")
     with open(args.input, "r", encoding="utf-8") as handle:
         prepared = json_load_or_user_error(handle.read(), "llm-prep")
+    env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
+    model = resolve_request_model(
+        provider=args.provider,
+        explicit_model=args.model,
+        model_env_var=args.model_env_var,
+        env=env,
+        cwd=context.cwd,
+    )
 
     payload = build_llm_request_payload(
         prepared,
         provider=args.provider,
-        model=args.model,
+        model=model,
         max_tokens=args.max_tokens,
     )
     rendered = render_json(payload)
@@ -1119,6 +1180,7 @@ def handle_llm_client(args, context: Context) -> int:
     if args.timeout_seconds <= 0:
         raise UserError("`--timeout-seconds` must be greater than zero.")
 
+    env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
     with open(args.input, "r", encoding="utf-8") as handle:
         request_payload = json_load_or_user_error(handle.read(), "llm-request")
     analysis = run_llm_client(
@@ -1126,6 +1188,7 @@ def handle_llm_client(args, context: Context) -> int:
         provider=args.provider,
         model=args.model,
         api_key_env=args.api_key_env,
+        env=env,
         timeout_seconds=args.timeout_seconds,
     )
     rendered = render_json(analysis)
@@ -1139,6 +1202,122 @@ def handle_llm_client(args, context: Context) -> int:
     os.makedirs(target_dir, exist_ok=True)
     with open(os.path.join(target_dir, "last-analysis.json"), "w", encoding="utf-8") as handle:
         handle.write(rendered)
+    return 0
+
+
+def handle_llm_resolve(args, context: Context) -> int:
+    if args.input != "-" and not os.path.isabs(args.input):
+        raise UserError("`--input` must be absolute when a file path is provided.")
+    if args.output and not os.path.isabs(args.output):
+        raise UserError("`--output` must be an absolute path.")
+    if args.artifact_dir and not os.path.isabs(args.artifact_dir):
+        raise UserError("`--artifact-dir` must be an absolute path.")
+    if args.max_tokens <= 0:
+        raise UserError("`--max-tokens` must be greater than zero.")
+    if args.timeout_seconds <= 0:
+        raise UserError("`--timeout-seconds` must be greater than zero.")
+
+    env = load_env_file(os.path.join(context.cwd, ".env"), dict(os.environ))
+    provider = resolve_auto_provider(args.provider, env, context.cwd)
+    args.cost_profile = resolve_cost_profile(args, env)
+    apply_cost_profile(args)
+
+    if args.max_incidents <= 0:
+        raise UserError("`--max-incidents` must be greater than zero.")
+    if args.max_context_chars <= 0:
+        raise UserError("`--max-context-chars` must be greater than zero.")
+    if args.max_stack_lines <= 0:
+        raise UserError("`--max-stack-lines` must be greater than zero.")
+    if args.repo_max_files <= 0:
+        raise UserError("`--repo-max-files` must be greater than zero.")
+    if args.repo_max_snippet_lines <= 0:
+        raise UserError("`--repo-max-snippet-lines` must be greater than zero.")
+    if not str(args.repo_env_var or "").strip():
+        raise UserError("`--repo-env-var` cannot be empty.")
+    if not str(args.cost_profile_env_var or "").strip():
+        raise UserError("`--cost-profile-env-var` cannot be empty.")
+    if not str(args.model_env_var or "").strip():
+        raise UserError("`--model-env-var` cannot be empty.")
+
+    if args.input == "-":
+        payload = context.stdin.read()
+    else:
+        with open(args.input, "r", encoding="utf-8") as handle:
+            payload = handle.read()
+
+    prepared = prepare_for_llm(
+        payload,
+        cloud=args.cloud,
+        runtime_hint=args.runtime,
+        severity_min=str(args.severity_min).upper(),
+        max_incidents=args.max_incidents,
+        max_context_chars=args.max_context_chars,
+        max_stack_lines=args.max_stack_lines,
+    )
+    repo_sources = build_repo_sources_for_llm(args, context, env)
+    if repo_sources:
+        prepared = enrich_prepared_with_repo_context(
+            prepared,
+            repo_sources,
+            max_files_per_incident=args.repo_max_files,
+            max_snippet_lines=args.repo_max_snippet_lines,
+        )
+        prepared.setdefault("meta", {})
+        prepared["meta"]["repo_sources"] = [
+            {
+                "repo_name": source.repo_name,
+                "repo_url": source.repo_url,
+                "branch": source.branch,
+                "repo_dir": source.repo_dir,
+            }
+            for source in repo_sources
+        ]
+        prepared["meta"]["repo_context_enabled"] = True
+    else:
+        prepared.setdefault("meta", {})
+        prepared["meta"]["repo_context_enabled"] = False
+    prepared["meta"]["cost_profile"] = args.cost_profile
+
+    model = resolve_request_model(
+        provider=provider,
+        explicit_model=args.model,
+        model_env_var=args.model_env_var,
+        env=env,
+        cwd=context.cwd,
+    )
+    request_payload = build_llm_request_payload(
+        prepared,
+        provider=provider,
+        model=model,
+        max_tokens=args.max_tokens,
+    )
+    analysis = run_llm_client(
+        request_payload,
+        provider=provider,
+        model=model,
+        api_key_env=args.api_key_env,
+        env=env,
+        timeout_seconds=args.timeout_seconds,
+    )
+
+    artifact_dir = args.artifact_dir or os.path.join(context.cwd, ".triage", "build", "local", "llm-resolve")
+    os.makedirs(artifact_dir, exist_ok=True)
+    prepared_rendered = render_json(prepared)
+    request_rendered = render_json(request_payload)
+    analysis_rendered = render_json(analysis)
+    with open(os.path.join(artifact_dir, "prepared.json"), "w", encoding="utf-8") as handle:
+        handle.write(prepared_rendered)
+    with open(os.path.join(artifact_dir, "llm-request.json"), "w", encoding="utf-8") as handle:
+        handle.write(request_rendered)
+    with open(os.path.join(artifact_dir, "llm-analysis.json"), "w", encoding="utf-8") as handle:
+        handle.write(analysis_rendered)
+
+    if args.output:
+        os.makedirs(os.path.dirname(args.output), exist_ok=True)
+        with open(args.output, "w", encoding="utf-8") as handle:
+            handle.write(analysis_rendered)
+    else:
+        context.stdout.write(analysis_rendered)
     return 0
 
 
@@ -1166,6 +1345,130 @@ def parse_repo_urls_from_env(raw_value: str) -> list[str]:
         return [str(item).strip() for item in parsed if str(item).strip()]
     chunks = [piece.strip() for piece in raw.replace("\n", ",").split(",")]
     return [item for item in chunks if item]
+
+
+def build_repo_sources_for_llm(args, context: Context, env: dict[str, str]) -> list[Any]:
+    repo_sources = []
+    for path in args.repo_path:
+        repo_sources.append(local_repo(path))
+
+    repo_urls = list(args.repo_url)
+    repo_urls.extend(parse_repo_urls_from_env(env.get(args.repo_env_var, "")))
+    repo_urls.extend(project_repo_urls(context.cwd))
+    repo_specs = dedupe_repo_specs(repo_urls, branch=args.repo_branch)
+
+    for spec in repo_specs:
+        clone_url = apply_repo_auth(spec["repo_url"], spec.get("auth"), env)
+        repo_sources.append(
+            checkout_repo(
+                context.cwd,
+                spec["repo_url"],
+                branch=spec["branch"],
+                clone_url=clone_url,
+            )
+        )
+    return repo_sources
+
+
+def apply_cost_profile(args) -> None:
+    if not args.cost_profile or args.cost_profile == "custom":
+        return
+    presets = {
+        "lean": {
+            "max_incidents": 5,
+            "max_context_chars": 1200,
+            "max_stack_lines": 8,
+            "repo_max_files": 1,
+            "repo_max_snippet_lines": 30,
+        },
+        "balanced": {
+            "max_incidents": 10,
+            "max_context_chars": 2200,
+            "max_stack_lines": 12,
+            "repo_max_files": 2,
+            "repo_max_snippet_lines": 50,
+        },
+        "deep": {
+            "max_incidents": 20,
+            "max_context_chars": 4000,
+            "max_stack_lines": 20,
+            "repo_max_files": 3,
+            "repo_max_snippet_lines": 80,
+        },
+    }
+    selected = presets.get(args.cost_profile)
+    if not selected:
+        return
+    for key, value in selected.items():
+        setattr(args, key, value)
+
+
+def resolve_cost_profile(args, env: dict[str, str]) -> str:
+    explicit = str(args.cost_profile or "").strip().lower()
+    if explicit:
+        return validate_cost_profile(explicit, source="--cost-profile")
+    env_var_name = str(args.cost_profile_env_var or "").strip()
+    raw = str(env.get(env_var_name, "")).strip() if env_var_name else ""
+    if raw:
+        return validate_cost_profile(raw.lower(), source=env_var_name)
+    return "custom"
+
+
+def validate_cost_profile(value: str, *, source: str) -> str:
+    allowed = {"custom", "lean", "balanced", "deep"}
+    if value not in allowed:
+        raise UserError(
+            f"Invalid cost profile `{value}` from `{source}`. Expected one of: custom, lean, balanced, deep."
+        )
+    return value
+
+
+def resolve_auto_provider(explicit_provider: str | None, env: dict[str, str], cwd: str) -> str:
+    if explicit_provider:
+        return explicit_provider
+    openai_key = str(env.get("OPENAI_API_KEY", "")).strip()
+    anthropic_key = str(env.get("ANTHROPIC_API_KEY", "")).strip()
+    if openai_key:
+        return "openai"
+    if anthropic_key:
+        return "anthropic"
+    project = load_project_config(cwd, optional=True)
+    if project:
+        configured = str((project.get("llm") or {}).get("provider") or "").strip()
+        if configured in ("openai", "anthropic", "mock"):
+            return configured
+    return "mock"
+
+
+def resolve_request_model(
+    *,
+    provider: str,
+    explicit_model: str | None,
+    model_env_var: str,
+    env: dict[str, str],
+    cwd: str,
+) -> str:
+    model = str(explicit_model or "").strip()
+    if model:
+        return model
+    provider_env_map = {
+        "openai": "TRIAGE_OPENAI_MODEL",
+        "anthropic": "TRIAGE_ANTHROPIC_MODEL",
+    }
+    provider_env_var = provider_env_map.get(provider, "")
+    provider_env_model = str(env.get(provider_env_var, "")).strip() if provider_env_var else ""
+    if provider_env_model:
+        return provider_env_model
+    env_model = str(env.get(model_env_var, "")).strip()
+    if env_model:
+        return env_model
+    project = load_project_config(cwd, optional=True)
+    if project:
+        project_provider = str((project.get("llm") or {}).get("provider") or "").strip()
+        project_model = str((project.get("llm") or {}).get("model") or "").strip()
+        if project_model and project_provider == provider:
+            return project_model
+    return default_model(provider)
 
 
 def project_repo_urls(cwd: str) -> list[dict[str, Any]]:

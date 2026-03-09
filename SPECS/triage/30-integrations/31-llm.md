@@ -48,10 +48,22 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
   - `llm-prep.v1` is the normalized and redacted incident-preparation payload emitted by `triage llm-prep`
   - `llm-request.v1` is the provider-ready request contract emitted by `triage llm-request`
   - `llm-analysis.v1` is the analysis result contract emitted by `triage llm-client`
+- Default model resolution for `llm-request`:
+  - `--model` flag
+  - provider-specific env: `TRIAGE_OPENAI_MODEL` or `TRIAGE_ANTHROPIC_MODEL`
+  - environment variable `TRIAGE_LLM_MODEL` (or custom `--model-env-var`)
+  - project `llm.model` when provider matches
+  - provider default (`openai: gpt-4o-mini`)
+- `llm-resolve` provider resolution when `--provider` is omitted:
+  - `openai` when `OPENAI_API_KEY` exists
+  - else `anthropic` when `ANTHROPIC_API_KEY` exists
+  - else `mock`
+  - when both keys exist, prefer `openai`
 - Repository context sources for `llm-prep`:
   - explicit `--repo-url` flags
   - environment variable `TRIAGE_REPO_URLS` (JSON array or comma/newline-separated)
   - `triage.yaml` `repos[].git_url`, with optional `repos[].auth` env indirection
+  - context budget presets through `--cost-profile` (`custom`, `lean`, `balanced`, `deep`)
 - Required `llm-prep.v1` incident fields:
   - `incident_id`
   - `cloud`
@@ -106,7 +118,7 @@ Define the optional LLM analysis contract for OpenIncidents without making the c
 - The provider and model are selected by the user rather than inferred automatically.
 - The raw LLM API token is stored only in the local CLI state file during the current documented phase.
 - The result must be strict JSON that can feed downstream notification logic.
-- The CLI must support an isolated pre-runtime flow (`llm-prep`, `llm-request`, `llm-client`) so LLM preparation and analysis can be validated before cloud runtime integration.
+- The CLI must support an isolated pre-runtime flow (`llm-prep`, `llm-request`, `llm-client`) plus a one-command wrapper (`llm-resolve`) so LLM preparation and analysis can be validated before cloud runtime integration.
 
 ## Open questions
 

@@ -33,6 +33,51 @@ DEFAULT_EXTENSIONS = {
     ".yml",
     ".json",
 }
+ALLOWED_NO_EXTENSION_FILENAMES = {
+    "Dockerfile",
+    "Makefile",
+}
+EXCLUDED_BASENAMES = {
+    "mvnw",
+    "mvnw.cmd",
+    "gradlew",
+    "gradlew.bat",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "go.sum",
+    "cargo.lock",
+    "composer.lock",
+}
+PATH_INCLUDE_HINTS = (
+    "/internal/",
+    "/src/",
+    "/service/",
+    "/services/",
+    "/handler/",
+    "/handlers/",
+    "/repository/",
+    "/repositories/",
+    "/controller/",
+    "/controllers/",
+    "/api/",
+    "/domain/",
+    "/usecase/",
+)
+PATH_EXCLUDE_HINTS = (
+    "/docs/",
+    "/scripts/",
+    "/ops/",
+    "/infra/",
+    "/.github/",
+    "/node_modules/",
+    "/vendor/",
+    "/build/",
+    "/dist/",
+    "/target/",
+    "/.mvn/",
+)
 STOPWORDS = {
     "error",
     "errors",
@@ -169,8 +214,14 @@ def scan_repo_for_terms(
     for root, dirnames, filenames in os.walk(repo.repo_dir):
         dirnames[:] = [name for name in dirnames if name not in {".git", "__pycache__", "node_modules", ".venv"}]
         for filename in filenames:
+            lower_name = filename.lower()
+            if lower_name in EXCLUDED_BASENAMES:
+                continue
             ext = os.path.splitext(filename)[1].lower()
-            if ext and ext not in DEFAULT_EXTENSIONS:
+            if ext:
+                if ext not in DEFAULT_EXTENSIONS:
+                    continue
+            elif filename not in ALLOWED_NO_EXTENSION_FILENAMES:
                 continue
             path = os.path.join(root, filename)
             if os.path.getsize(path) > 600_000:
@@ -180,7 +231,10 @@ def scan_repo_for_terms(
             if not file_matches:
                 continue
             score, line_number, matched_term = file_matches
+            score += path_score_adjustment(relpath)
             snippet, line_start, line_end = extract_snippet(path, line_number, max_snippet_lines, max_snippet_chars)
+            if not snippet.strip():
+                continue
             candidates.append(
                 {
                     "repo_name": repo.repo_name,
@@ -199,6 +253,18 @@ def scan_repo_for_terms(
         if len(candidates) >= max_files * 3:
             break
     return candidates
+
+
+def path_score_adjustment(relpath: str) -> int:
+    path = "/" + relpath.replace("\\", "/").lower()
+    score = 0
+    for hint in PATH_INCLUDE_HINTS:
+        if hint in path:
+            score += 3
+    for hint in PATH_EXCLUDE_HINTS:
+        if hint in path:
+            score -= 2
+    return score
 
 
 def first_file_match(path: str, terms: list[str]) -> tuple[int, int, str] | None:

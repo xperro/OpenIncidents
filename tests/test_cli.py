@@ -110,6 +110,66 @@ class CliTests(unittest.TestCase):
         self.assertEqual(prepared["meta"]["prepared_incidents"], 1)
         self.assertEqual(prepared["incidents"][0]["service"], "payments-orchestrator")
 
+    def test_llm_prep_lean_cost_profile_truncates_context(self):
+        long_message = ("timeout on postgres while fetching approvals " * 120).strip()
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": long_message,
+            }
+        )
+        code, stdout, stderr = self.run_cli(
+            ["llm-prep", "--cloud", "gcp", "--runtime", "python", "--cost-profile", "lean"],
+            input_text=payload,
+        )
+
+        self.assertEqual(code, 0, msg=stderr)
+        prepared = json.loads(stdout)
+        self.assertEqual(prepared["meta"]["cost_profile"], "lean")
+        summary = prepared["incidents"][0]["summary"]
+        self.assertEqual(len(summary), 1200)
+
+    def test_llm_prep_uses_cost_profile_from_env_when_flag_missing(self):
+        long_message = ("timeout on postgres while fetching approvals " * 120).strip()
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": long_message,
+            }
+        )
+        with mock.patch.dict(os.environ, {"TRIAGE_LLM_COST_PROFILE": "lean"}, clear=False):
+            code, stdout, stderr = self.run_cli(
+                ["llm-prep", "--cloud", "gcp", "--runtime", "python"],
+                input_text=payload,
+            )
+
+        self.assertEqual(code, 0, msg=stderr)
+        prepared = json.loads(stdout)
+        self.assertEqual(prepared["meta"]["cost_profile"], "lean")
+        self.assertEqual(len(prepared["incidents"][0]["summary"]), 1200)
+
+    def test_llm_prep_cost_profile_flag_overrides_env(self):
+        long_message = ("timeout on postgres while fetching approvals " * 120).strip()
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": long_message,
+            }
+        )
+        with mock.patch.dict(os.environ, {"TRIAGE_LLM_COST_PROFILE": "lean"}, clear=False):
+            code, stdout, stderr = self.run_cli(
+                ["llm-prep", "--cloud", "gcp", "--runtime", "python", "--cost-profile", "deep"],
+                input_text=payload,
+            )
+
+        self.assertEqual(code, 0, msg=stderr)
+        prepared = json.loads(stdout)
+        self.assertEqual(prepared["meta"]["cost_profile"], "deep")
+        self.assertEqual(len(prepared["incidents"][0]["summary"]), 4000)
+
     def test_llm_prep_loads_repo_urls_from_env_array(self):
         payload = json.dumps(
             {
@@ -247,6 +307,231 @@ class CliTests(unittest.TestCase):
             analysis = json.load(handle)
         self.assertEqual(analysis["schema_version"], "llm-analysis.v1")
         self.assertEqual(analysis["meta"]["analyzed_incidents"], 1)
+
+    def test_llm_resolve_runs_end_to_end_with_mock_without_init(self):
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": "gateway timeout while charging card",
+            }
+        )
+        artifact_dir = os.path.join(self.work_dir, "resolve-artifacts")
+        code, stdout, stderr = self.run_cli(
+            [
+                "llm-resolve",
+                "--cloud",
+                "gcp",
+                "--runtime",
+                "python",
+                "--provider",
+                "mock",
+                "--artifact-dir",
+                artifact_dir,
+            ],
+            input_text=payload,
+        )
+        self.assertEqual(code, 0, msg=stderr)
+        analysis = json.loads(stdout)
+        self.assertEqual(analysis["schema_version"], "llm-analysis.v1")
+        self.assertTrue(os.path.exists(os.path.join(artifact_dir, "prepared.json")))
+        self.assertTrue(os.path.exists(os.path.join(artifact_dir, "llm-request.json")))
+        self.assertTrue(os.path.exists(os.path.join(artifact_dir, "llm-analysis.json")))
+
+    def test_llm_resolve_auto_provider_prefers_openai_when_both_keys_exist(self):
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": "gateway timeout while charging card",
+            }
+        )
+        artifact_dir = os.path.join(self.work_dir, "resolve-artifacts-auto-openai")
+        fake_analysis = {
+            "schema_version": "llm-analysis.v1",
+            "request_id": "x",
+            "analyzed_at": "2026-03-09T00:00:00Z",
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "results": [],
+            "meta": {"input_incidents": 1, "analyzed_incidents": 0},
+        }
+        with mock.patch.dict(
+            os.environ,
+            {"OPENAI_API_KEY": "sk-test", "ANTHROPIC_API_KEY": "ant-test"},
+            clear=False,
+        ):
+            with mock.patch("triage.cli.run_llm_client", return_value=fake_analysis) as run_client:
+                code, stdout, stderr = self.run_cli(
+                    [
+                        "llm-resolve",
+                        "--cloud",
+                        "gcp",
+                        "--runtime",
+                        "python",
+                        "--artifact-dir",
+                        artifact_dir,
+                    ],
+                    input_text=payload,
+                )
+        self.assertEqual(code, 0, msg=stderr)
+        self.assertEqual(json.loads(stdout)["provider"], "openai")
+        self.assertEqual(run_client.call_args.kwargs["provider"], "openai")
+
+    def test_llm_resolve_auto_provider_falls_back_to_mock_without_keys(self):
+        payload = json.dumps(
+            {
+                "severity": "ERROR",
+                "resource": {"labels": {"service_name": "payments-orchestrator"}},
+                "textPayload": "gateway timeout while charging card",
+            }
+        )
+        with mock.patch.dict(
+            os.environ,
+            {"OPENAI_API_KEY": "", "ANTHROPIC_API_KEY": ""},
+            clear=False,
+        ):
+            code, stdout, stderr = self.run_cli(
+                [
+                    "llm-resolve",
+                    "--cloud",
+                    "gcp",
+                    "--runtime",
+                    "python",
+                ],
+                input_text=payload,
+            )
+        self.assertEqual(code, 0, msg=stderr)
+        self.assertEqual(json.loads(stdout)["provider"], "mock")
+
+    def test_llm_request_uses_openai_default_model_when_missing(self):
+        prepared_path = os.path.join(self.work_dir, "prepared.json")
+        request_path = os.path.join(self.work_dir, "request.json")
+        prepared_payload = {
+            "schema_version": "llm-prep.v1",
+            "incidents": [
+                {
+                    "incident_id": "abc123",
+                    "service": "approve-mrs",
+                    "cloud": "gcp",
+                    "runtime_hint": "go",
+                    "severity": "ERROR",
+                    "count": 1,
+                    "window": {"first_seen": "2026-03-09T15:00:00Z", "last_seen": "2026-03-09T15:00:00Z"},
+                    "summary": "db timeout on postgres",
+                    "error_message": "db timeout on postgres",
+                    "stacktrace_excerpt": "",
+                    "source_link": "",
+                    "llm_input": {"incident_summary": "db timeout on postgres", "evidence": ["event-1"]},
+                }
+            ],
+        }
+        with open(prepared_path, "w", encoding="utf-8") as handle:
+            json.dump(prepared_payload, handle)
+        code, _, stderr = self.run_cli(
+            [
+                "llm-request",
+                "--input",
+                prepared_path,
+                "--provider",
+                "openai",
+                "--output",
+                request_path,
+            ]
+        )
+        self.assertEqual(code, 0, msg=stderr)
+        with open(request_path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        self.assertEqual(payload["model"], "gpt-4o-mini")
+
+    def test_llm_request_uses_model_from_env_when_missing(self):
+        prepared_path = os.path.join(self.work_dir, "prepared.json")
+        request_path = os.path.join(self.work_dir, "request.json")
+        prepared_payload = {
+            "schema_version": "llm-prep.v1",
+            "incidents": [
+                {
+                    "incident_id": "abc123",
+                    "service": "approve-mrs",
+                    "cloud": "gcp",
+                    "runtime_hint": "go",
+                    "severity": "ERROR",
+                    "count": 1,
+                    "window": {"first_seen": "2026-03-09T15:00:00Z", "last_seen": "2026-03-09T15:00:00Z"},
+                    "summary": "db timeout on postgres",
+                    "error_message": "db timeout on postgres",
+                    "stacktrace_excerpt": "",
+                    "source_link": "",
+                    "llm_input": {"incident_summary": "db timeout on postgres", "evidence": ["event-1"]},
+                }
+            ],
+        }
+        with open(prepared_path, "w", encoding="utf-8") as handle:
+            json.dump(prepared_payload, handle)
+        with mock.patch.dict(os.environ, {"TRIAGE_LLM_MODEL": "gpt-4.1-mini"}, clear=False):
+            code, _, stderr = self.run_cli(
+                [
+                    "llm-request",
+                    "--input",
+                    prepared_path,
+                    "--provider",
+                    "openai",
+                    "--output",
+                    request_path,
+                ]
+            )
+        self.assertEqual(code, 0, msg=stderr)
+        with open(request_path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        self.assertEqual(payload["model"], "gpt-4.1-mini")
+
+    def test_llm_request_uses_anthropic_provider_specific_env_model(self):
+        prepared_path = os.path.join(self.work_dir, "prepared.json")
+        request_path = os.path.join(self.work_dir, "request.json")
+        prepared_payload = {
+            "schema_version": "llm-prep.v1",
+            "incidents": [
+                {
+                    "incident_id": "abc123",
+                    "service": "approve-mrs",
+                    "cloud": "gcp",
+                    "runtime_hint": "go",
+                    "severity": "ERROR",
+                    "count": 1,
+                    "window": {"first_seen": "2026-03-09T15:00:00Z", "last_seen": "2026-03-09T15:00:00Z"},
+                    "summary": "db timeout on postgres",
+                    "error_message": "db timeout on postgres",
+                    "stacktrace_excerpt": "",
+                    "source_link": "",
+                    "llm_input": {"incident_summary": "db timeout on postgres", "evidence": ["event-1"]},
+                }
+            ],
+        }
+        with open(prepared_path, "w", encoding="utf-8") as handle:
+            json.dump(prepared_payload, handle)
+        with mock.patch.dict(
+            os.environ,
+            {
+                "TRIAGE_LLM_MODEL": "global-fallback-model",
+                "TRIAGE_ANTHROPIC_MODEL": "claude-3-5-haiku",
+            },
+            clear=False,
+        ):
+            code, _, stderr = self.run_cli(
+                [
+                    "llm-request",
+                    "--input",
+                    prepared_path,
+                    "--provider",
+                    "anthropic",
+                    "--output",
+                    request_path,
+                ]
+            )
+        self.assertEqual(code, 0, msg=stderr)
+        with open(request_path, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        self.assertEqual(payload["model"], "claude-3-5-haiku")
 
     def test_init_creates_state_and_scaffold(self):
         fake_validation = ValidationResult(cloud="gcp", ok=True, checks=["gcloud: ok"])

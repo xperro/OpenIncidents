@@ -1,5 +1,6 @@
 import json
 import unittest
+from unittest import mock
 
 from triage.llm_request import build_llm_request_payload, run_llm_client
 
@@ -57,6 +58,32 @@ class LLMRequestTests(unittest.TestCase):
         self.assertIn("suggested_fix", analysis["results"][0]["analysis"])
         # Ensure output remains JSON-serializable.
         json.dumps(analysis)
+
+    def test_run_llm_client_uses_injected_env_for_api_key(self):
+        request_payload = {
+            "schema_version": "llm-request.v1",
+            "request_id": "llmreq-2",
+            "provider": "openai",
+            "model": "gpt-4o-mini",
+            "incidents": [
+                {
+                    "incident_id": "abc124",
+                    "service": "approve-mrs",
+                    "severity": "ERROR",
+                    "incident_summary": "db timeout on postgres",
+                    "evidence": ["event-1"],
+                }
+            ],
+        }
+
+        with mock.patch("triage.llm_request.client.call_openai", return_value='{"summary":"ok"}'):
+            analysis = run_llm_client(
+                request_payload,
+                provider="openai",
+                env={"OPENAI_API_KEY": "sk-test"},
+            )
+        self.assertEqual(analysis["provider"], "openai")
+        self.assertEqual(len(analysis["results"]), 1)
 
 
 if __name__ == "__main__":

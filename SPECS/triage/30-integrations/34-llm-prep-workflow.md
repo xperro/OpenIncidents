@@ -11,6 +11,7 @@ Define the isolated CLI-first workflow that prepares incidents for LLM analysis,
   - `triage llm-prep`
   - `triage llm-request`
   - `triage llm-client`
+  - `triage llm-resolve` one-command end-to-end flow
   - repository URL resolution and clone/context enrichment for `llm-prep`
   - canonical payload contracts and examples
 - Out of scope:
@@ -41,11 +42,24 @@ Define the isolated CLI-first workflow that prepares incidents for LLM analysis,
       - environment variable `TRIAGE_REPO_URLS` (JSON array or comma/newline-separated URLs)
       - `triage.yaml` `repos[].git_url`
     - when `triage.yaml repos[].auth` exists, resolve credentials from `username_env` and `token_env` before clone
+    - optional context budget profile with `--cost-profile`:
+      - `custom`: keeps explicit flag values
+      - `lean`: low-cost defaults (`max_incidents=5`, `max_context_chars=1200`, `max_stack_lines=8`, `repo_max_files=1`, `repo_max_snippet_lines=30`)
+      - `balanced`: moderate defaults (`10`, `2200`, `12`, `2`, `50`)
+      - `deep`: high-context defaults (`20`, `4000`, `20`, `3`, `80`)
+    - when `--cost-profile` is omitted, `triage llm-prep` may read the default profile from `TRIAGE_LLM_COST_PROFILE` (or the variable selected by `--cost-profile-env-var`)
+    - repository scan excludes common non-business files (for example `mvnw`, lockfiles) and prioritizes business paths (`internal/`, `src/`, `service/`, `repository/`, `handler/`)
 - Step 2: `triage llm-request`
   - input schema: `llm-prep.v1`
   - output schema: `llm-request.v1`
   - behavior:
     - choose provider and model
+    - model resolution order:
+      - `--model` (if provided)
+      - provider-specific env (`TRIAGE_OPENAI_MODEL` or `TRIAGE_ANTHROPIC_MODEL`)
+      - environment variable `TRIAGE_LLM_MODEL` (or the variable selected by `--model-env-var`)
+      - project `triage.yaml` `llm.model` when `llm.provider` matches the request provider
+      - provider default (`openai: gpt-4o-mini`)
     - enforce per-incident max token budget
     - attach strict response contract
 - Step 3: `triage llm-client`
@@ -62,6 +76,27 @@ Define the isolated CLI-first workflow that prepares incidents for LLM analysis,
 
 ## Example Flow
 
+Single-command full flow:
+
+```bash
+cat events.json | .venv/bin/python -m triage llm-resolve \
+  --cloud gcp \
+  --runtime go \
+  --provider openai \
+  --artifact-dir "$(pwd)/llm-artifacts" \
+  --output "$(pwd)/llm-analysis.json"
+```
+
+This command persists intermediate artifacts in `artifact-dir`:
+- `prepared.json`
+- `llm-request.json`
+- `llm-analysis.json`
+- Provider resolution for `llm-resolve` when `--provider` is omitted:
+  - use `openai` when `OPENAI_API_KEY` is present
+  - otherwise use `anthropic` when `ANTHROPIC_API_KEY` is present
+  - if both keys are present, prefer `openai`
+  - if no key is present, fallback to `mock` for a coarse local analysis
+
 1. Prepare incidents:
 
 ```bash
@@ -77,6 +112,26 @@ cat events.json | .venv/bin/python -m triage llm-prep \
   --repo-url https://github.com/chrisloarryn/rent-a-car-microservices.git \
   --repo-branch main \
   --output "$(pwd)/prepared-with-repo.json"
+```
+
+Low-cost profile (recommended during MVP validation):
+
+```bash
+cat events.json | .venv/bin/python -m triage llm-prep \
+  --cloud gcp \
+  --runtime go \
+  --cost-profile lean \
+  --output "$(pwd)/prepared-lean.json"
+```
+
+Low-cost profile from environment (no profile flag):
+
+```bash
+export TRIAGE_LLM_COST_PROFILE=lean
+cat events.json | .venv/bin/python -m triage llm-prep \
+  --cloud gcp \
+  --runtime go \
+  --output "$(pwd)/prepared-lean-env.json"
 ```
 
 2. Build LLM request:
