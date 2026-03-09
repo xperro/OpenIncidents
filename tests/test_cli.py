@@ -305,8 +305,9 @@ class CliTests(unittest.TestCase):
                 "name": "approve-mrs-dev",
                 "repo_name": "approve-mrs-dev",
                 "description": "Approve MRs service logs.",
-                "exclude_severity_at_or_above": "WARNING",
-                "exclude_repo_name_like": "approve-mrs",
+                "include_severity_at_or_above": "INFO",
+                "include_repo_name_like": "approve-mrs",
+                "exclude_severities": ["DEBUG"],
             }
         ]
         save_project_config(self.work_dir, project)
@@ -328,7 +329,8 @@ class CliTests(unittest.TestCase):
         self.assertEqual(generated["sinks"][0]["name"], "approve-mrs-dev")
         self.assertEqual(generated["sinks"][0]["repo_name"], "approve-mrs-dev")
         self.assertEqual(generated["sinks"][0]["repo_match_like"], "approve-mrs")
-        self.assertEqual(generated["sinks"][0]["exclusions"][0]["filter"], "severity>=WARNING")
+        self.assertIn('severity>=INFO', generated["sinks"][0]["filter"])
+        self.assertEqual(generated["sinks"][0]["exclusions"][0]["filter"], "severity=DEBUG")
         self.assertEqual(
             generated["container_image"],
             f"us-central1-docker.pkg.dev/my-project/triage/triage-handler:python-dev-{VERSION}-pending",

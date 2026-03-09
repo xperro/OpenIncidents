@@ -207,8 +207,44 @@ def build_gcp_repo_match_filter(value: str) -> str:
     return " OR ".join(f'{field} =~ "{pattern}"' for field in fields)
 
 
+def join_gcp_filter_clauses(*clauses: str) -> str:
+    parts = [str(clause or "").strip() for clause in clauses if str(clause or "").strip()]
+    return " AND ".join(f"({part})" for part in parts)
+
+
+def derive_gcp_sink_filter(project: dict[str, Any], sink: dict[str, Any]) -> str:
+    base_filter = str(sink.get("filter") or "").strip()
+    include_severity = str(sink.get("include_severity_at_or_above") or "").strip().upper()
+    include_repo_like = str(sink.get("include_repo_name_like") or "").strip()
+    resolved = join_gcp_filter_clauses(
+        base_filter,
+        f"severity>={include_severity}" if include_severity else "",
+        build_gcp_repo_match_filter(include_repo_like),
+    )
+    if resolved:
+        return resolved
+    return derive_gcp_log_filter(project)
+
+
 def derive_gcp_sink_exclusions(sink: dict[str, Any]) -> list[dict[str, str]]:
     exclusions = []
+    exact_severities = sink.get("exclude_severities") or []
+    if isinstance(exact_severities, str):
+        exact_severities = [exact_severities]
+    normalized_exact = [
+        str(severity or "").strip().upper()
+        for severity in exact_severities
+        if str(severity or "").strip()
+    ]
+    if normalized_exact:
+        severity_filter = " OR ".join(f"severity={severity}" for severity in normalized_exact)
+        exclusions.append(
+            {
+                "name": normalize_gcp_exclusion_name(f"{sink.get('name', 'sink')}-severity-match"),
+                "description": f"Exclude exact severities: {', '.join(normalized_exact)}.",
+                "filter": severity_filter,
+            }
+        )
     severity = str(sink.get("exclude_severity_at_or_above") or "").strip().upper()
     if severity:
         exclusions.append(
@@ -423,11 +459,24 @@ def validate_project_config(project: dict[str, Any], cloud: str) -> list[str]:
                 if name in names:
                     errors.append(f"{prefix}.name must be unique after normalization.")
                 names.add(name)
+                include_severity = str(sink.get("include_severity_at_or_above") or "").strip().upper()
+                if include_severity and include_severity not in VALID_SEVERITIES:
+                    errors.append(
+                        f"{prefix}.include_severity_at_or_above has an invalid severity."
+                    )
                 severity = str(sink.get("exclude_severity_at_or_above") or "").strip().upper()
                 if severity and severity not in VALID_SEVERITIES:
                     errors.append(
                         f"{prefix}.exclude_severity_at_or_above has an invalid severity."
                     )
+                exact_severities = sink.get("exclude_severities") or []
+                if exact_severities and not isinstance(exact_severities, list):
+                    errors.append(f"{prefix}.exclude_severities must be a list when present.")
+                elif isinstance(exact_severities, list):
+                    for severity in exact_severities:
+                        normalized = str(severity or "").strip().upper()
+                        if normalized and normalized not in VALID_SEVERITIES:
+                            errors.append(f"{prefix}.exclude_severities contains an invalid severity.")
         else:
             for field in ("sink_name", "topic_name", "subscription_name"):
                 if not gcp.get(field):
@@ -462,7 +511,11 @@ def derive_gcp_sinks(project: dict[str, Any]) -> list[dict[str, Any]]:
         for sink in configured:
             name = normalize_gcp_sink_resource_name(sink.get("name"))
             repo_name = str(sink.get("repo_name") or "").strip()
-            repo_match_like = str(sink.get("exclude_repo_name_like") or "").strip() or repo_name
+            repo_match_like = (
+                str(sink.get("include_repo_name_like") or "").strip()
+                or str(sink.get("exclude_repo_name_like") or "").strip()
+                or repo_name
+            )
             resolved.append(
                 {
                     "name": name,
@@ -470,7 +523,7 @@ def derive_gcp_sinks(project: dict[str, Any]) -> list[dict[str, Any]]:
                     "repo_match_like": repo_match_like,
                     "description": str(sink.get("description") or "").strip()
                     or f"OpenIncidents export for {name}.",
-                    "filter": str(sink.get("filter") or "").strip(),
+                    "filter": derive_gcp_sink_filter(project, sink),
                     "exclusions": derive_gcp_sink_exclusions(sink),
                 }
             )

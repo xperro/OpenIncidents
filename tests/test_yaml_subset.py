@@ -71,8 +71,9 @@ class YamlSubsetTests(unittest.TestCase):
                 "name": "approve-mrs-dev",
                 "repo_name": "approve-mrs-dev",
                 "description": "Approve MRs Cloud Run logs.",
-                "exclude_severity_at_or_above": "WARNING",
-                "exclude_repo_name_like": "approve-mrs",
+                "include_severity_at_or_above": "INFO",
+                "include_repo_name_like": "approve-mrs",
+                "exclude_severities": ["DEBUG"],
             }
         ]
 
@@ -82,9 +83,10 @@ class YamlSubsetTests(unittest.TestCase):
 
         self.assertEqual(loaded["gcp"]["sinks"][0]["repo_name"], "approve-mrs-dev")
         self.assertEqual(sinks[0]["repo_match_like"], "approve-mrs")
-        self.assertEqual(sinks[0]["exclusions"][0]["filter"], "severity>=WARNING")
-        self.assertIn("protoPayload.resourceName", sinks[0]["exclusions"][1]["filter"])
-        self.assertIn("exclude_repo_name_like: approve-mrs", rendered)
+        self.assertIn('severity>=INFO', sinks[0]["filter"])
+        self.assertIn("protoPayload.resourceName", sinks[0]["filter"])
+        self.assertEqual(sinks[0]["exclusions"][0]["filter"], "severity=DEBUG")
+        self.assertIn("include_repo_name_like: approve-mrs", rendered)
 
     def test_gcp_repo_match_filter_covers_common_fields(self):
         rendered = build_gcp_repo_match_filter("request-approvals")

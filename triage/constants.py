@@ -1,6 +1,6 @@
 """Shared constants for the ``triage`` CLI."""
 
-VERSION = "1.0.6"
+VERSION = "1.0.7"
 SCHEMA_VERSION = 1
 
 VALID_CLOUDS = ("gcp", "aws")
@@ -114,6 +114,9 @@ KEY_ORDERS = {
         "repo_name",
         "description",
         "filter",
+        "include_severity_at_or_above",
+        "include_repo_name_like",
+        "exclude_severities",
         "exclude_severity_at_or_above",
         "exclude_repo_name_like",
     ),

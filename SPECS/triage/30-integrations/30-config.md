@@ -66,10 +66,12 @@ gcp:
   sinks:
     - name: approve-mrs-dev
       repo_name: approve-mrs-dev
-      description: Low-severity operational logs for approve-mrs.
+      description: Cloud Run approval workflow logs for approve-mrs.
       filter: resource.type="cloud_run_revision"
-      exclude_severity_at_or_above: WARNING
-      exclude_repo_name_like: approve-mrs
+      include_severity_at_or_above: INFO
+      include_repo_name_like: approve-mrs
+      exclude_severities:
+        - DEBUG
 
 aws:
   region: us-east-1
@@ -152,8 +154,11 @@ integrations:
   - GCP derives `log_filter` as `severity>=X` from `policy.severity_min` unless `gcp.log_filter_override` is set
   - GCP default resource names derive from `env` as `triage-<env>` for `sink_name` and `topic_name`, and `triage-<env>-push` for `subscription_name`
   - `gcp.sinks[]` items define multiple Cloud Logging sinks that share the top-level `gcp.topic_name` and `gcp.subscription_name`
-  - `gcp.sinks[].exclude_severity_at_or_above` expands into a Cloud Logging sink exclusion using `severity>=X`
-  - `gcp.sinks[].exclude_repo_name_like` expands into a Cloud Logging sink exclusion that rejects entries whose common log fields do not contain the configured repo-like token
+  - `gcp.sinks[].filter` is the base inclusion clause for that sink
+  - `gcp.sinks[].include_severity_at_or_above` appends `severity>=X` to the sink inclusion filter
+  - `gcp.sinks[].include_repo_name_like` appends a repo-like inclusion clause over common Cloud Logging fields such as `logName`, `textPayload`, `resource.labels.service_name`, and `protoPayload.resourceName`
+  - `gcp.sinks[].exclude_severities` expands into one Cloud Logging sink exclusion using exact comparisons such as `severity=DEBUG`
+  - `gcp.sinks[].exclude_severity_at_or_above` and `gcp.sinks[].exclude_repo_name_like` remain compatibility fields for broader exclusions, but the preferred contract is inclusion-first filtering plus optional exact exclusions
   - the deployed GCP handler receives sink routing metadata from infrastructure and uses it to infer `repo_name`, `sink_name`, and a clearer `error_message` from the pushed log payload
   - the decoded Cloud Logging payload remains available to the runtime contract as `logging_event`; the derived fields are additive rather than a replacement for the raw event
   - AWS `json` derives `filter_pattern` from the configured `severity_field` unless `aws.filter_pattern_override` is set
