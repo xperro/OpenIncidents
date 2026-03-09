@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -17,28 +18,48 @@ from triage.validation import ValidationResult
 
 class CliTests(unittest.TestCase):
     def setUp(self):
-        self.home_dir = tempfile.TemporaryDirectory()
-        self.work_dir = tempfile.TemporaryDirectory()
-        self.addCleanup(self.home_dir.cleanup)
-        self.addCleanup(self.work_dir.cleanup)
+        self.home_dir = tempfile.mkdtemp(prefix="triage-home-")
+        self.work_dir = tempfile.mkdtemp(prefix="triage-work-")
+        self.addCleanup(self._cleanup_tree, self.work_dir)
+        self.addCleanup(self._cleanup_tree, self.home_dir)
         patcher = mock.patch.dict(
             os.environ,
             {
-                "HOME": self.home_dir.name,
-                "APPDATA": self.home_dir.name,
-                "USERPROFILE": self.home_dir.name,
+                "HOME": self.home_dir,
+                "APPDATA": self.home_dir,
+                "USERPROFILE": self.home_dir,
+                "LOCALAPPDATA": self.home_dir,
+                "GOTELEMETRY": "off",
+                "GOTOOLCHAIN": "local",
             },
             clear=False,
         )
         patcher.start()
         self.addCleanup(patcher.stop)
 
+    def _cleanup_tree(self, path: str) -> None:
+        if not os.path.exists(path):
+            return
+        last_error = None
+        for _ in range(6):
+            try:
+                shutil.rmtree(path)
+                return
+            except PermissionError as exc:
+                last_error = exc
+                time.sleep(0.5)
+        if os.name == "nt":
+            shutil.rmtree(path, ignore_errors=True)
+            return
+        if last_error is not None:
+            raise last_error
+
     def run_cli(self, argv, input_text=""):
         stdout = io.StringIO()
         stderr = io.StringIO()
         code = main(
             argv=argv,
-            cwd=self.work_dir.name,
+            cwd=self.work_dir,
             stdin=io.StringIO(input_text),
             stdout=stdout,
             stderr=stderr,
@@ -67,12 +88,12 @@ class CliTests(unittest.TestCase):
 
         self.assertEqual(code, 0, msg=stderr)
         self.assertIn("Local state:", stdout)
-        self.assertTrue(os.path.exists(os.path.join(self.work_dir.name, "triage.yaml")))
+        self.assertTrue(os.path.exists(os.path.join(self.work_dir, "triage.yaml")))
         self.assertTrue(os.path.exists(state_path()))
 
     def test_template_download_writes_expected_files(self):
         self.complete_bootstrap()
-        output_path = os.path.join(self.work_dir.name, "handler-template")
+        output_path = os.path.join(self.work_dir, "handler-template")
         code, stdout, stderr = self.run_cli(
             [
                 "template",
@@ -100,7 +121,7 @@ class CliTests(unittest.TestCase):
 
     def test_template_download_requires_force_for_non_empty_dir(self):
         self.complete_bootstrap()
-        output_path = os.path.join(self.work_dir.name, "handler-template")
+        output_path = os.path.join(self.work_dir, "handler-template")
         os.makedirs(output_path, exist_ok=True)
         with open(os.path.join(output_path, "keep.txt"), "w", encoding="utf-8") as handle:
             handle.write("occupied")
@@ -142,7 +163,7 @@ class CliTests(unittest.TestCase):
 
     def test_template_download_force_overwrites_dir(self):
         self.complete_bootstrap()
-        output_path = os.path.join(self.work_dir.name, "handler-template")
+        output_path = os.path.join(self.work_dir, "handler-template")
         os.makedirs(output_path, exist_ok=True)
         with open(os.path.join(output_path, "stale.txt"), "w", encoding="utf-8") as handle:
             handle.write("stale")
@@ -167,7 +188,7 @@ class CliTests(unittest.TestCase):
 
     def test_template_download_filters_junk_files(self):
         self.complete_bootstrap()
-        custom_root = os.path.join(self.work_dir.name, "custom-templates")
+        custom_root = os.path.join(self.work_dir, "custom-templates")
         source_dir = os.path.join(custom_root, "python", "gcp")
         os.makedirs(os.path.join(source_dir, "__pycache__"), exist_ok=True)
         os.makedirs(os.path.join(source_dir, "adapters"), exist_ok=True)
@@ -186,7 +207,7 @@ class CliTests(unittest.TestCase):
         with open(os.path.join(source_dir, ".DS_Store"), "w", encoding="utf-8") as handle:
             handle.write("junk")
 
-        output_path = os.path.join(self.work_dir.name, "downloaded-template")
+        output_path = os.path.join(self.work_dir, "downloaded-template")
         with mock.patch("triage.templates.resolve_templates_root", return_value=custom_root):
             code, _, stderr = self.run_cli(
                 [
@@ -208,7 +229,7 @@ class CliTests(unittest.TestCase):
 
     def test_infra_generate_writes_terraform_inputs(self):
         self.complete_bootstrap()
-        save_project_config(self.work_dir.name, default_project_config())
+        save_project_config(self.work_dir, default_project_config())
         with mock.patch(
             "triage.cli.validate_cloud",
             return_value=ValidationResult(cloud="gcp", ok=True, checks=["ok"]),
@@ -229,8 +250,8 @@ class CliTests(unittest.TestCase):
         project = default_project_config()
         project["integrations"]["slack"]["enabled"] = False
         project["integrations"]["jira"]["enabled"] = False
-        save_project_config(self.work_dir.name, project)
-        template_path = os.path.join(self.work_dir.name, "template")
+        save_project_config(self.work_dir, project)
+        template_path = os.path.join(self.work_dir, "template")
         os.makedirs(template_path, exist_ok=True)
 
         code, _, stderr = self.run_cli(
@@ -287,8 +308,8 @@ class CliTests(unittest.TestCase):
         project = default_project_config()
         project["integrations"]["slack"]["enabled"] = False
         project["integrations"]["jira"]["enabled"] = False
-        save_project_config(self.work_dir.name, project)
-        template_path = os.path.join(self.work_dir.name, "go-template")
+        save_project_config(self.work_dir, project)
+        template_path = os.path.join(self.work_dir, "go-template")
 
         code, _, stderr = self.run_cli(
             [
@@ -331,7 +352,7 @@ class CliTests(unittest.TestCase):
 
     def test_package_handler_rejects_wrong_variant(self):
         self.complete_bootstrap()
-        template_path = os.path.join(self.work_dir.name, "python-gcp-template")
+        template_path = os.path.join(self.work_dir, "python-gcp-template")
 
         code, _, stderr = self.run_cli(
             [
@@ -348,7 +369,7 @@ class CliTests(unittest.TestCase):
         self.assertEqual(code, 0, msg=stderr)
 
         with self.assertRaises(UserError) as ctx:
-            package_handler(self.work_dir.name, "aws", "python", template_path)
+            package_handler(self.work_dir, "aws", "python", template_path)
 
         self.assertIn("does not match the expected python/aws template variant", str(ctx.exception))
 
@@ -357,7 +378,7 @@ class CliTests(unittest.TestCase):
         project = default_project_config()
         project["integrations"]["slack"]["enabled"] = False
         project["integrations"]["jira"]["enabled"] = False
-        save_project_config(self.work_dir.name, project)
+        save_project_config(self.work_dir, project)
 
         with mock.patch(
             "triage.cli.validate_cloud",
